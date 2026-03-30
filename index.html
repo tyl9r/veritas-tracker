@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Veritas v0.21</title>
+<title>Veritas v0.22</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
@@ -29,9 +29,9 @@ header{border-bottom:1px solid var(--border);padding:1.1rem 2rem;display:flex;al
 .logo{font-family:'DM Mono',monospace;font-size:22px;font-weight:500;letter-spacing:-0.03em;color:var(--accent)}
 .header-right{display:flex;align-items:center;gap:14px}
 .roster-status{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--muted)}
-.rdot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .3s}
-.rdot.live{background:var(--accent);box-shadow:0 0 8px rgba(47,204,108,.5);animation:pulse 2s ease-in-out infinite}
-@keyframes pulse{0%,100%{box-shadow:0 0 4px rgba(47,204,108,.3)}50%{box-shadow:0 0 12px rgba(47,204,108,.6)}}
+.rdot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .3s}
+.rdot.live{background:var(--accent);box-shadow:0 0 10px rgba(47,204,108,.6);animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 6px rgba(47,204,108,.4);transform:scale(1)}50%{box-shadow:0 0 18px rgba(47,204,108,.8);transform:scale(1.3)}}
 .rdot.fallback{background:var(--amber)}
 .rdot.loading{background:var(--blue);animation:blink 1s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
@@ -94,8 +94,8 @@ select:disabled{opacity:.4;cursor:not-allowed}
 .ac-loading{padding:10px 12px;font-size:12px;color:var(--muted);text-align:center}
 .btn{padding:8px 16px;border-radius:var(--radius);border:1px solid var(--border2);background:transparent;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:background .15s;white-space:nowrap}
 .btn:hover{background:var(--surface2)}
-.btn.primary{background:var(--grad);color:#0a0a0c;border-color:transparent;font-weight:600}
-.btn.primary:hover{opacity:.88;box-shadow:0 2px 12px var(--glow)}
+.btn.primary{background:var(--accent);color:#0a0a0c;border-color:var(--accent);font-weight:600}
+.btn.primary:hover{opacity:.85}
 .btn.danger{color:var(--red);border-color:transparent;background:transparent;padding:4px 8px;font-size:14px}
 .btn.danger:hover{background:var(--red-bg)}
 .btn.sm{font-size:12px;padding:5px 12px}
@@ -229,7 +229,7 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
       <div class="logo">Veritas</div>
       <span style="font-size:11px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;font-weight:500">Profit Tracker</span>
     </div>
-    <div style="font-size:10px;color:var(--hint);letter-spacing:0.04em">made by tyler &#x2E3A; v0.21</div>
+    <div style="font-size:10px;color:var(--hint);letter-spacing:0.04em">made by tyler &#x2E3A; v0.22</div>
   </div>
   <div class="header-right">
     <div class="roster-status">
