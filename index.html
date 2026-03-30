@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Veritas v0.11</title>
+<title>Veritas v0.12</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -155,7 +155,7 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
       <div class="logo">Veritas</div>
       <span style="font-size:11px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;font-weight:500">Profit Tracker</span>
     </div>
-    <div style="font-size:10px;color:var(--hint)">Built by Tyler — Made with Claude &nbsp;·&nbsp; v0.11</div>
+    <div style="font-size:10px;color:var(--hint)">Built by Tyler — Made with Claude &nbsp;·&nbsp; v0.12</div>
   </div>
   <div class="header-right">
     <div class="roster-status">
@@ -1091,61 +1091,45 @@ function gradeBet(side, target, current) {
   return 'pending';
 }
 
-// Fetch today's games, then stats for active/final games (All-Star tier compatible)
+// Fetch live box scores (GOAT tier) for real-time meters and auto-grading
 async function pollLiveStats() {
   // Only poll if we have pending prop or parlay bets
   const pendingProps = bets.filter(b => b.result === 'pending' && (b.kind === 'prop' || b.kind === 'parlay'));
   if (!pendingProps.length) return;
 
   try {
-    // Step 1: Get today's games
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const gamesRes = await fetch(`${BASE}/nba/v1/games?dates[]=${todayStr}&per_page=50`, { headers: HEADERS });
-    if (!gamesRes.ok) { console.warn('[Live] games fetch failed:', gamesRes.status); return; }
-    const gamesJson = await gamesRes.json();
-    const games = gamesJson.data || [];
+    const res = await fetch(`${BASE}/nba/v1/box_scores/live`, { headers: HEADERS });
+    if (!res.ok) { console.warn('[Live] box scores fetch failed:', res.status); return; }
+    const json = await res.json();
+    const games = json.data || [];
 
-    if (!games.length) { console.log('[Live] no games today'); return; }
-
-    // Step 2: Find games that are in progress or Final
-    const activeGames = games.filter(g => {
-      const s = (g.status || '').toLowerCase();
-      return s !== '' && s !== 'scheduled' && s !== 'not started';
-    });
-    if (!activeGames.length) { console.log('[Live] no active/final games yet'); return; }
-
-    // Step 3: Fetch stats for each active game
+    // Rebuild cache
     const newCache = {};
-    for (const game of activeGames) {
-      const isFinal = (game.status || '').toLowerCase().includes('final');
-      const period = game.period || 0;
-      const time = game.time || '';
-      const isLive = !isFinal && period > 0;
+    games.forEach(game => {
+      const status = game.status;
+      const period = game.period;
+      const time   = game.time;
+      const isFinal = status === 'Final';
+      const isLive  = !isFinal && period > 0;
 
-      try {
-        const statsRes = await fetch(`${BASE}/nba/v1/stats?game_ids[]=${game.id}`, { headers: HEADERS });
-        if (!statsRes.ok) { console.warn(`[Live] stats fetch failed for game ${game.id}:`, statsRes.status); continue; }
-        const statsJson = await statsRes.json();
-        const statRows = statsJson.data || [];
-
-        statRows.forEach(s => {
-          if (!s.player) return;
-          const name = `${s.player.first_name} ${s.player.last_name}`.toLowerCase();
+      [game.home_team, game.visitor_team].forEach(team => {
+        if (!team?.players) return;
+        team.players.forEach(p => {
+          if (!p.player) return;
+          const name = `${p.player.first_name} ${p.player.last_name}`.toLowerCase();
           newCache[name] = {
-            pts: s.pts || 0, reb: s.reb || 0, ast: s.ast || 0,
-            stl: s.stl || 0, blk: s.blk || 0, turnover: s.turnover || 0,
-            fg3m: s.fg3m || 0,
-            status: game.status, period, time, isFinal, isLive,
+            pts: p.pts || 0, reb: p.reb || 0, ast: p.ast || 0,
+            stl: p.stl || 0, blk: p.blk || 0, turnover: p.turnover || 0,
+            fg3m: p.fg3m || 0,
+            status, period, time, isFinal, isLive,
             gameId: game.id,
           };
         });
-      } catch(e) {
-        console.warn(`[Live] stats error for game ${game.id}:`, e.message);
-      }
-    }
+      });
+    });
 
     liveStatsCache = newCache;
-    console.log(`[Live] updated ${Object.keys(newCache).length} player stats from ${activeGames.length} game(s)`);
+    console.log(`[Live] updated ${Object.keys(newCache).length} player stats from ${games.length} game(s)`);
 
     // Auto-grade pending bets where game is Final
     let graded = false;
