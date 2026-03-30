@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Veritas v0.36</title>
+<title>Veritas v0.37</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -28,6 +28,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 ::-webkit-scrollbar-thumb:hover{background:var(--muted)}
 header{border-bottom:1px solid var(--border);padding:1.1rem 2rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:rgba(10,10,12,0.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);z-index:100}
 .logo{font-family:'DM Mono',monospace;font-size:22px;font-weight:500;letter-spacing:-0.03em;color:var(--accent)}
+.header-nav{display:flex;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:3px}
+.nav-btn{padding:6px 16px;border-radius:5px;border:none;background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer;transition:all .2s}
+.nav-btn:hover{color:var(--text)}
+.nav-btn.active{background:var(--surface3);color:var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.2)}
 .header-right{display:flex;align-items:center;gap:14px}
 .roster-status{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--muted)}
 .rdot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .3s}
@@ -224,7 +228,9 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
   .mobile-after-sport{display:none}
   .mobile-after-sport.show{display:flex}
   header{padding:0.75rem 1rem;flex-wrap:wrap;gap:8px}
-  .header-right{width:100%;justify-content:space-between}
+  .header-nav{order:3;width:100%}
+  .nav-btn{flex:1;text-align:center;padding:6px 10px;font-size:11px}
+  .header-right{justify-content:flex-end}
   .main{padding:0.75rem}
   .stats-row{grid-template-columns:1fr 1fr;gap:8px}
   .stat-card{padding:0.75rem 1rem}
@@ -403,28 +409,33 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
 <!-- MAIN APP (hidden until authenticated) -->
 <div id="app-main" style="display:none">
 <header style="margin-top:2px">
-  <div style="display:flex;flex-direction:column;gap:2px">
+  <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0">
     <div style="display:flex;align-items:baseline;gap:12px">
       <div class="logo">Veritas</div>
-      <span style="font-size:11px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;font-weight:500">Profit Tracker</span>
     </div>
     <div style="font-size:10px;color:var(--muted);letter-spacing:0.04em;padding-left:2px">made by tyler</div>
   </div>
+  <!-- Center nav -->
+  <nav class="header-nav">
+    <button class="nav-btn active" id="nav-home" onclick="navTo('home')">Home</button>
+    <button class="nav-btn" id="nav-search" onclick="navTo('search')">Search</button>
+    <button class="nav-btn" id="nav-profile" onclick="viewOwnProfile()" style="display:none">My Profile</button>
+  </nav>
   <div class="header-right">
     <div class="roster-status">
       <div class="rdot loading" id="rdot"></div>
-      <span id="rtext">Loading rosters…</span>
+      <span id="rtext" style="display:none">Loading…</span>
     </div>
     <div class="settings-wrap" style="position:relative">
-      <button class="btn sm" onclick="toggleSettings()" id="settings-btn">⚙ Settings</button>
+      <button class="btn sm" onclick="toggleSettings()" id="settings-btn">⚙</button>
       <div class="settings-menu" id="settings-menu">
+        <div class="settings-item" onclick="toggleSettings();showProfileSettings()">
+          <span class="settings-item-label">Profile settings</span>
+          <span class="settings-item-desc">Display name, avatar, bio, publicity</span>
+        </div>
         <div class="settings-item" onclick="exportCSV();toggleSettings()">
           <span class="settings-item-label">Export CSV</span>
           <span class="settings-item-desc">Download all bets as a spreadsheet</span>
-        </div>
-        <div class="settings-item" onclick="toggleSettings();showProfileSettings()">
-          <span class="settings-item-label">Profile settings</span>
-          <span class="settings-item-desc">Username, display name, public profile</span>
         </div>
         <div class="settings-item danger" onclick="toggleSettings();clearAll()">
           <span class="settings-item-label">Clear all bets</span>
@@ -435,7 +446,7 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
           <span class="settings-item-desc" id="user-email-display"></span>
         </div>
         <div class="settings-item" style="cursor:default;border-top:1px solid var(--border)">
-          <span class="settings-item-desc" style="text-align:center;width:100%;color:var(--muted);font-family:'DM Mono',monospace">v0.36</span>
+          <span class="settings-item-desc" style="text-align:center;width:100%;color:var(--muted);font-family:'DM Mono',monospace">v0.37</span>
         </div>
       </div>
     </div>
@@ -452,16 +463,11 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
 </div>
 
 <div class="main">
-  <!-- Profile actions bar -->
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;flex-wrap:wrap">
-    <div style="display:flex;gap:8px;align-items:center">
-      <button class="btn sm" onclick="viewOwnProfile()" id="btn-my-profile" style="display:none">My profile</button>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center">
-      <div style="position:relative">
-        <input type="text" id="profile-search" placeholder="Search users..." style="font-size:12px;padding:5px 10px;width:180px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text)" oninput="searchProfiles(this.value)" onfocus="searchProfiles(this.value)"/>
-        <div id="search-results" style="display:none;position:absolute;top:calc(100% + 4px);right:0;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-lg);min-width:220px;max-height:200px;overflow-y:auto;z-index:300;box-shadow:0 8px 24px rgba(0,0,0,.4)"></div>
-      </div>
+  <!-- Search panel (toggled by nav) -->
+  <div id="search-panel" style="display:none;margin-bottom:16px">
+    <div style="position:relative;max-width:400px;margin:0 auto">
+      <input type="text" id="profile-search" placeholder="Search users by name or username..." style="font-size:13px;padding:10px 14px;width:100%;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-lg);color:var(--text)" oninput="searchProfiles(this.value)" onfocus="searchProfiles(this.value)"/>
+      <div id="search-results" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-lg);max-height:260px;overflow-y:auto;z-index:300;box-shadow:0 8px 24px rgba(0,0,0,.4)"></div>
     </div>
   </div>
 
@@ -2109,7 +2115,7 @@ async function loadProfile() {
   if (data) {
     document.getElementById('user-email-display').textContent = data.username || currentUser.email;
     // Show "My profile" button if public
-    const btn = document.getElementById('btn-my-profile');
+    const btn = document.getElementById('nav-profile');
     if (btn) btn.style.display = data.is_public ? '' : 'none';
   }
   // Welcome banner
@@ -2168,12 +2174,13 @@ async function saveProfileSettings() {
   const is_public = document.getElementById('prof-public').checked;
   const updates = { display_name, bio, is_public };
   if (pendingAvatarUrl) updates.avatar_url = pendingAvatarUrl;
-  const { error } = await sb.from('profiles').update(updates).eq('id', currentUser.id);
-  if (error) return alert('Error: ' + error.message);
+  const { error, status } = await sb.from('profiles').update(updates).eq('id', currentUser.id);
+  console.log('[Profile] save result:', { error, status, updates });
+  if (error) return alert('Error saving profile: ' + error.message + '\n\nCode: ' + error.code);
   currentProfile = { ...currentProfile, ...updates };
   pendingAvatarUrl = null;
   document.getElementById('user-email-display').textContent = currentProfile.username;
-  const btn = document.getElementById('btn-my-profile');
+  const btn = document.getElementById('nav-profile');
   if (btn) btn.style.display = is_public ? '' : 'none';
   closeProfileSettings();
 }
@@ -2197,6 +2204,15 @@ async function handleAvatarUpload(input) {
 function viewOwnProfile() {
   if (currentProfile?.username) {
     window.open(window.location.pathname + '?u=' + currentProfile.username, '_blank');
+  }
+}
+
+function navTo(page) {
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('nav-' + page)?.classList.add('active');
+  document.getElementById('search-panel').style.display = page === 'search' ? '' : 'none';
+  if (page === 'search') {
+    setTimeout(() => document.getElementById('profile-search')?.focus(), 100);
   }
 }
 
