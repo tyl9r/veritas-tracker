@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Veritas v0.42</title>
+<title>Veritas v0.43</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -386,45 +386,12 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
   </div>
 </div>
 
-<!-- PUBLIC PROFILE PAGE (shown for ?u=username) -->
-<div id="profile-page" style="display:none">
-  <header style="margin-top:2px">
-    <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0">
-      <a class="logo" href="." style="text-decoration:none">Veritas</a>
-      <div style="font-size:10px;color:var(--muted);letter-spacing:0.04em;padding-left:2px">made by tyler</div>
-    </div>
-    <nav class="header-nav">
-      <a class="nav-btn" href="." style="text-decoration:none">Home</a>
-      <button class="nav-btn" onclick="document.getElementById('prof-search-panel').style.display=this.classList.toggle('active')?'':'none'">Search</button>
-      <a class="nav-btn active" href="javascript:void(0)" style="text-decoration:none">My Profile</a>
-    </nav>
-    <div style="width:60px"></div>
-  </header>
-  <!-- Profile page search panel -->
-  <div id="prof-search-panel" style="display:none;padding:12px 2rem">
-    <div style="position:relative;max-width:400px;margin:0 auto">
-      <input type="text" id="prof-profile-search" placeholder="Search users by name or username..." style="font-size:13px;padding:10px 14px;width:100%;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-lg);color:var(--text)" oninput="searchProfilesFrom(this.value,'prof-search-results')" onfocus="searchProfilesFrom(this.value,'prof-search-results')"/>
-      <div id="prof-search-results" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-lg);max-height:260px;overflow-y:auto;z-index:300;box-shadow:0 8px 24px rgba(0,0,0,.4)"></div>
-    </div>
-  </div>
-  <div class="profile-page">
-    <div class="profile-header">
-      <div class="profile-avatar" id="prof-page-avatar"><span>?</span></div>
-      <div class="profile-name" id="prof-name"></div>
-      <div class="profile-sub" id="prof-sub"></div>
-      <div id="prof-badge-area"></div>
-      <div class="profile-bio" id="prof-page-bio"></div>
-    </div>
-    <div class="profile-stats" id="prof-stats"></div>
-  </div>
-</div>
-
 <!-- MAIN APP (hidden until authenticated) -->
 <div id="app-main" style="display:none">
 <header style="margin-top:2px">
   <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0">
     <div style="display:flex;align-items:baseline;gap:12px">
-      <a class="logo" href="." style="text-decoration:none">Veritas</a>
+      <a class="logo" href="#" onclick="navTo('home');return false" style="text-decoration:none">Veritas</a>
     </div>
     <div style="font-size:10px;color:var(--muted);letter-spacing:0.04em;padding-left:2px">made by tyler</div>
   </div>
@@ -459,7 +426,7 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
           <span class="settings-item-desc" id="user-email-display"></span>
         </div>
         <div class="settings-item" style="cursor:default;border-top:1px solid var(--border)">
-          <span class="settings-item-desc" style="text-align:center;width:100%;color:var(--muted);font-family:'DM Mono',monospace">v0.42</span>
+          <span class="settings-item-desc" style="text-align:center;width:100%;color:var(--muted);font-family:'DM Mono',monospace">v0.43</span>
         </div>
       </div>
     </div>
@@ -484,6 +451,21 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
     </div>
   </div>
 
+  <!-- Profile page (inline, shares header/nav) -->
+  <div id="profile-page" style="display:none">
+    <div class="profile-page">
+      <div class="profile-header">
+        <div class="profile-avatar" id="prof-page-avatar"><span>?</span></div>
+        <div class="profile-name" id="prof-name"></div>
+        <div class="profile-sub" id="prof-sub"></div>
+        <div id="prof-badge-area"></div>
+        <div class="profile-bio" id="prof-page-bio"></div>
+      </div>
+      <div class="profile-stats" id="prof-stats"></div>
+    </div>
+  </div>
+
+  <div id="home-content">
   <div class="stats-row" id="stats-row"></div>
   <div class="chart-wrap">
     <div class="section-label" style="margin-bottom:10px">Cumulative profit / loss</div>
@@ -648,6 +630,7 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
       </table>
     </div>
   </div>
+  </div><!-- /home-content -->
 </div>
 <!-- PROFILE SETTINGS MODAL -->
 <div class="modal-overlay" id="profile-modal">
@@ -2236,17 +2219,78 @@ async function handleAvatarUpload(input) {
 
 function viewOwnProfile() {
   if (currentProfile?.username) {
-    window.location.href = window.location.pathname + '?u=' + currentProfile.username;
+    showProfileInline(currentProfile.username);
+    navTo('profile');
   }
 }
 
 function navTo(page) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('nav-' + page)?.classList.add('active');
-  document.getElementById('search-panel').style.display = page === 'search' ? '' : 'none';
-  if (page === 'search') {
+  const searchPanel = document.getElementById('search-panel');
+  const homeContent = document.getElementById('home-content');
+  const profilePage = document.getElementById('profile-page');
+  if (page === 'home') {
+    searchPanel.style.display = 'none';
+    homeContent.style.display = '';
+    profilePage.style.display = 'none';
+  } else if (page === 'search') {
+    searchPanel.style.display = '';
+    homeContent.style.display = '';
+    profilePage.style.display = 'none';
     setTimeout(() => document.getElementById('profile-search')?.focus(), 100);
+  } else if (page === 'profile') {
+    searchPanel.style.display = 'none';
+    homeContent.style.display = 'none';
+    profilePage.style.display = '';
   }
+}
+
+async function showProfileInline(username) {
+  const profilePage = document.getElementById('profile-page');
+  profilePage.style.display = '';
+  document.getElementById('home-content').style.display = 'none';
+  document.getElementById('prof-name').textContent = username;
+  document.getElementById('prof-sub').textContent = 'Loading...';
+  document.getElementById('prof-badge-area').innerHTML = '';
+  document.getElementById('prof-stats').innerHTML = '';
+  document.getElementById('prof-page-bio').style.display = 'none';
+
+  const { data: profile } = await sb.from('profiles')
+    .select('username, display_name, avatar_url, bio, member_number, is_public')
+    .eq('username', username).eq('is_public', true).single();
+  if (!profile) {
+    document.getElementById('prof-sub').textContent = 'Profile not found or is private.';
+    return;
+  }
+  const avatarEl = document.getElementById('prof-page-avatar');
+  if (profile.avatar_url) {
+    avatarEl.innerHTML = `<img src="${profile.avatar_url}"/>`;
+  } else {
+    avatarEl.innerHTML = `<span>${(profile.display_name || profile.username || '?')[0].toUpperCase()}</span>`;
+  }
+  document.getElementById('prof-name').textContent = profile.display_name || profile.username;
+  document.getElementById('prof-sub').textContent = '@' + profile.username;
+  const bioEl = document.getElementById('prof-page-bio');
+  bioEl.textContent = profile.bio || '';
+  bioEl.style.display = profile.bio ? '' : 'none';
+  const badgeArea = document.getElementById('prof-badge-area');
+  let badges = '';
+  if (profile.username === 'tyler' || profile.username === 't') badges += `<div class="admin-badge">Administrator</div>`;
+  if (profile.member_number && profile.member_number <= 50) badges += `<div class="early-badge">Early Member #${profile.member_number}</div>`;
+  badgeArea.innerHTML = badges;
+
+  const { data: statsData } = await sb.rpc('public_profile_stats', { p_username: username });
+  if (!statsData) {
+    document.getElementById('prof-stats').innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px">No betting data yet</div>';
+    return;
+  }
+  const d = statsData;
+  const roi = d.total_staked > 0 ? ((d.total_pl / d.total_staked) * 100).toFixed(1) : '0.0';
+  document.getElementById('prof-stats').innerHTML = `
+    <div class="stat-card green"><div class="stat-label">Record</div><div class="stat-value">${d.wins}W – ${d.losses}L – ${d.pushes}P</div><div class="stat-sub">${d.total_bets} total bets</div></div>
+    <div class="stat-card ${d.total_pl >= 0 ? 'green' : 'red'}"><div class="stat-label">Profit / Loss</div><div class="stat-value ${d.total_pl >= 0 ? 'pos' : 'neg'}">${d.total_pl >= 0 ? '+' : '-'}$${Math.abs(d.total_pl).toFixed(2)}</div><div class="stat-sub">ROI: ${d.total_pl >= 0 ? '+' : ''}${roi}%</div></div>
+  `;
 }
 
 // Search profiles
@@ -2272,7 +2316,7 @@ async function searchProfiles(query) {
         : `<div class="search-avatar">${(p.display_name || p.username || '?')[0].toUpperCase()}</div>`;
       const isAdmin = p.username === 'tyler' || p.username === 't';
       const badge = (isAdmin ? ' <span style="color:var(--red);font-size:10px">⚡</span>' : '') + (p.member_number <= 50 ? ' <span style="color:#ffd700;font-size:10px">★</span>' : '');
-      return `<div class="search-item" onclick="window.location.href='${window.location.pathname}?u=${p.username}'">
+      return `<div class="search-item" onclick="showProfileInline('${p.username}');navTo('profile')">
         ${avatar}
         <div><div class="search-name">${p.display_name || p.username}${badge}</div><div class="search-user">@${p.username}</div></div>
       </div>`;
@@ -2302,7 +2346,7 @@ function searchProfilesFrom(query, resultsId) {
         : `<div class="search-avatar">${(p.display_name || p.username || '?')[0].toUpperCase()}</div>`;
       const isAdmin = p.username === 'tyler' || p.username === 't';
       const badge = (isAdmin ? ' <span style="color:var(--red);font-size:10px">⚡</span>' : '') + (p.member_number <= 50 ? ' <span style="color:#ffd700;font-size:10px">★</span>' : '');
-      return `<div class="search-item" onclick="window.location.href='${window.location.pathname}?u=${p.username}'">
+      return `<div class="search-item" onclick="showProfileInline('${p.username}');navTo('profile')">
         ${avatar}
         <div><div class="search-name">${p.display_name || p.username}${badge}</div><div class="search-user">@${p.username}</div></div>
       </div>`;
@@ -2323,53 +2367,15 @@ async function checkPublicProfile() {
   const params = new URLSearchParams(window.location.search);
   const u = params.get('u');
   if (!u) return false;
-  // Show profile page, hide everything else
+  // Show app-main (for shared header/nav), hide auth, show profile inline
   document.getElementById('auth-page').classList.add('hidden');
-  document.getElementById('app-main').style.display = 'none';
-  document.getElementById('profile-page').style.display = '';
-  document.getElementById('prof-name').textContent = u;
-  document.getElementById('prof-sub').textContent = 'Loading...';
-
-  // Fetch profile info
-  const { data: profile } = await sb.from('profiles')
-    .select('username, display_name, avatar_url, bio, member_number, is_public')
-    .eq('username', u).eq('is_public', true).single();
-  if (!profile) {
-    document.getElementById('prof-sub').textContent = 'Profile not found or is private.';
-    return true;
-  }
-  // Avatar
-  const avatarEl = document.getElementById('prof-page-avatar');
-  if (profile.avatar_url) {
-    avatarEl.innerHTML = `<img src="${profile.avatar_url}"/>`;
-  } else {
-    avatarEl.innerHTML = `<span>${(profile.display_name || profile.username || '?')[0].toUpperCase()}</span>`;
-  }
-  document.getElementById('prof-name').textContent = profile.display_name || profile.username;
-  document.getElementById('prof-sub').textContent = '@' + profile.username;
-  // Bio
-  const bioEl = document.getElementById('prof-page-bio');
-  bioEl.textContent = profile.bio || '';
-  bioEl.style.display = profile.bio ? '' : 'none';
-  // Badges
-  const badgeArea = document.getElementById('prof-badge-area');
-  let badges = '';
-  if (profile.username === 'tyler' || profile.username === 't') badges += `<div class="admin-badge">Administrator</div>`;
-  if (profile.member_number && profile.member_number <= 50) badges += `<div class="early-badge">Early Member #${profile.member_number}</div>`;
-  badgeArea.innerHTML = badges;
-
-  // Fetch stats
-  const { data: statsData } = await sb.rpc('public_profile_stats', { p_username: u });
-  if (!statsData) {
-    document.getElementById('prof-stats').innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px">No betting data yet</div>';
-    return true;
-  }
-  const d = statsData;
-  const roi = d.total_staked > 0 ? ((d.total_pl / d.total_staked) * 100).toFixed(1) : '0.0';
-  document.getElementById('prof-stats').innerHTML = `
-    <div class="stat-card green"><div class="stat-label">Record</div><div class="stat-value">${d.wins}W – ${d.losses}L – ${d.pushes}P</div><div class="stat-sub">${d.total_bets} total bets</div></div>
-    <div class="stat-card ${d.total_pl >= 0 ? 'green' : 'red'}"><div class="stat-label">Profit / Loss</div><div class="stat-value ${d.total_pl >= 0 ? 'pos' : 'neg'}">${d.total_pl >= 0 ? '+' : '-'}$${Math.abs(d.total_pl).toFixed(2)}</div><div class="stat-sub">ROI: ${d.total_pl >= 0 ? '+' : ''}${roi}%</div></div>
-  `;
+  document.getElementById('app-main').style.display = '';
+  // Show nav buttons (Home, Search always; My Profile if logged in)
+  document.getElementById('nav-home').style.display = '';
+  document.getElementById('nav-search').style.display = '';
+  // Load profile inline
+  await showProfileInline(u);
+  navTo('profile');
   return true;
 }
 
