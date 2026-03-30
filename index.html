@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Veritas v0.38</title>
+<title>Veritas v0.39</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -390,15 +390,23 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
 <div id="profile-page" style="display:none">
   <header style="margin-top:2px">
     <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0">
-      <div class="logo">Veritas</div>
+      <a class="logo" href="." style="text-decoration:none">Veritas</a>
       <div style="font-size:10px;color:var(--muted);letter-spacing:0.04em;padding-left:2px">made by tyler</div>
     </div>
     <nav class="header-nav">
       <a class="nav-btn" href="." style="text-decoration:none">Home</a>
+      <button class="nav-btn" onclick="document.getElementById('prof-search-panel').style.display=this.classList.toggle('active')?'':'none'">Search</button>
       <button class="nav-btn active" disabled>Profile</button>
     </nav>
     <div style="width:60px"></div>
   </header>
+  <!-- Profile page search panel -->
+  <div id="prof-search-panel" style="display:none;padding:12px 2rem">
+    <div style="position:relative;max-width:400px;margin:0 auto">
+      <input type="text" id="prof-profile-search" placeholder="Search users by name or username..." style="font-size:13px;padding:10px 14px;width:100%;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-lg);color:var(--text)" oninput="searchProfilesFrom(this.value,'prof-search-results')" onfocus="searchProfilesFrom(this.value,'prof-search-results')"/>
+      <div id="prof-search-results" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-lg);max-height:260px;overflow-y:auto;z-index:300;box-shadow:0 8px 24px rgba(0,0,0,.4)"></div>
+    </div>
+  </div>
   <div class="profile-page">
     <div class="profile-header">
       <div class="profile-avatar" id="prof-page-avatar"><span>?</span></div>
@@ -416,7 +424,7 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
 <header style="margin-top:2px">
   <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0">
     <div style="display:flex;align-items:baseline;gap:12px">
-      <div class="logo">Veritas</div>
+      <a class="logo" href="." style="text-decoration:none">Veritas</a>
     </div>
     <div style="font-size:10px;color:var(--muted);letter-spacing:0.04em;padding-left:2px">made by tyler</div>
   </div>
@@ -451,7 +459,7 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
           <span class="settings-item-desc" id="user-email-display"></span>
         </div>
         <div class="settings-item" style="cursor:default;border-top:1px solid var(--border)">
-          <span class="settings-item-desc" style="text-align:center;width:100%;color:var(--muted);font-family:'DM Mono',monospace">v0.38</span>
+          <span class="settings-item-desc" style="text-align:center;width:100%;color:var(--muted);font-family:'DM Mono',monospace">v0.39</span>
         </div>
       </div>
     </div>
@@ -2252,11 +2260,42 @@ async function searchProfiles(query) {
     results.style.display = 'block';
   }, 300);
 }
+// Reusable search for any results container
+function searchProfilesFrom(query, resultsId) {
+  const results = document.getElementById(resultsId);
+  if (!query || query.length < 1) { results.style.display = 'none'; return; }
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(async () => {
+    const { data } = await sb.from('profiles')
+      .select('username, display_name, avatar_url, member_number')
+      .eq('is_public', true)
+      .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
+      .limit(8);
+    if (!data || !data.length) {
+      results.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--muted);text-align:center">No users found</div>';
+      results.style.display = 'block';
+      return;
+    }
+    results.innerHTML = data.map(p => {
+      const avatar = p.avatar_url
+        ? `<div class="search-avatar"><img src="${p.avatar_url}"/></div>`
+        : `<div class="search-avatar">${(p.display_name || p.username || '?')[0].toUpperCase()}</div>`;
+      const isAdmin = p.username === 'tyler' || p.username === 't';
+      const badge = (isAdmin ? ' <span style="color:var(--red);font-size:10px">⚡</span>' : '') + (p.member_number <= 50 ? ' <span style="color:#ffd700;font-size:10px">★</span>' : '');
+      return `<div class="search-item" onclick="window.location.href='${window.location.pathname}?u=${p.username}'">
+        ${avatar}
+        <div><div class="search-name">${p.display_name || p.username}${badge}</div><div class="search-user">@${p.username}</div></div>
+      </div>`;
+    }).join('');
+    results.style.display = 'block';
+  }, 300);
+}
 // Close search on click outside
 document.addEventListener('mousedown', e => {
-  const sr = document.getElementById('search-results');
-  const si = document.getElementById('profile-search');
-  if (sr && !sr.contains(e.target) && !si.contains(e.target)) sr.style.display = 'none';
+  ['search-results','prof-search-results'].forEach(id => {
+    const sr = document.getElementById(id);
+    if (sr && !sr.contains(e.target) && !e.target.closest('input[type=text]')) sr.style.display = 'none';
+  });
 });
 
 // Public profile view
