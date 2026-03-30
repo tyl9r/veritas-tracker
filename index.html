@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Veritas v0.34</title>
+<title>Veritas v0.35</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -309,6 +309,20 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
 .profile-name{font-family:'DM Mono',monospace;font-size:24px;color:var(--accent);margin-bottom:4px}
 .profile-sub{font-size:12px;color:var(--muted)}
 .profile-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px}
+.profile-avatar{width:72px;height:72px;border-radius:50%;background:var(--surface3);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--muted);overflow:hidden;margin:0 auto 12px}
+.profile-avatar img{width:100%;height:100%;object-fit:cover}
+.profile-bio{font-size:13px;color:var(--muted);text-align:center;margin-bottom:16px;max-width:400px;margin-left:auto;margin-right:auto;line-height:1.5}
+.early-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:99px;font-size:11px;font-weight:600;background:linear-gradient(135deg,rgba(255,215,0,0.12),rgba(255,170,0,0.08));border:1px solid rgba(255,215,0,0.25);color:#ffd700;letter-spacing:.03em;margin-top:6px}
+.early-badge::before{content:'★';font-size:12px}
+@keyframes badge-glow{0%,100%{box-shadow:0 0 6px rgba(255,215,0,.15)}50%{box-shadow:0 0 14px rgba(255,215,0,.3)}}
+.early-badge{animation:badge-glow 3s ease-in-out infinite}
+.search-item{padding:10px 14px;cursor:pointer;transition:background .1s;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
+.search-item:last-child{border-bottom:none}
+.search-item:hover{background:var(--surface3)}
+.search-avatar{width:28px;height:28px;border-radius:50%;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted);overflow:hidden;flex-shrink:0}
+.search-avatar img{width:100%;height:100%;object-fit:cover}
+.search-name{font-size:13px;font-weight:500;color:var(--text)}
+.search-user{font-size:11px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -372,8 +386,11 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
   </header>
   <div class="profile-page">
     <div class="profile-header">
+      <div class="profile-avatar" id="prof-page-avatar"><span>?</span></div>
       <div class="profile-name" id="prof-name"></div>
       <div class="profile-sub" id="prof-sub"></div>
+      <div id="prof-badge-area"></div>
+      <div class="profile-bio" id="prof-page-bio"></div>
     </div>
     <div class="profile-stats" id="prof-stats"></div>
   </div>
@@ -414,14 +431,36 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
           <span class="settings-item-desc" id="user-email-display"></span>
         </div>
         <div class="settings-item" style="cursor:default;border-top:1px solid var(--border)">
-          <span class="settings-item-desc" style="text-align:center;width:100%;color:var(--muted);font-family:'DM Mono',monospace">v0.34</span>
+          <span class="settings-item-desc" style="text-align:center;width:100%;color:var(--muted);font-family:'DM Mono',monospace">v0.35</span>
         </div>
       </div>
     </div>
   </div>
 </header>
 
+<!-- Email verification reminder -->
+<div id="verify-banner" style="display:none;background:rgba(232,69,69,0.06);border-bottom:1px solid rgba(232,69,69,0.12);padding:8px 2rem;font-size:12px;color:var(--red);text-align:center">
+  Please verify your email address. Check your inbox for a confirmation link.
+</div>
+<!-- Welcome banner -->
+<div id="welcome-banner" style="display:none;background:var(--green-bg);border-bottom:1px solid rgba(47,204,108,0.12);padding:10px 2rem;font-size:13px;color:var(--green);text-align:center">
+  Welcome to Veritas, <span id="welcome-name"></span>!
+</div>
+
 <div class="main">
+  <!-- Profile actions bar -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;flex-wrap:wrap">
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn sm" onclick="viewOwnProfile()" id="btn-my-profile" style="display:none">My profile</button>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div style="position:relative">
+        <input type="text" id="profile-search" placeholder="Search users..." style="font-size:12px;padding:5px 10px;width:180px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text)" oninput="searchProfiles(this.value)" onfocus="searchProfiles(this.value)"/>
+        <div id="search-results" style="display:none;position:absolute;top:calc(100% + 4px);right:0;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-lg);min-width:220px;max-height:200px;overflow-y:auto;z-index:300;box-shadow:0 8px 24px rgba(0,0,0,.4)"></div>
+      </div>
+    </div>
+  </div>
+
   <div class="stats-row" id="stats-row"></div>
   <div class="chart-wrap">
     <div class="section-label" style="margin-bottom:10px">Cumulative profit / loss</div>
@@ -589,14 +628,27 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
 </div>
 <!-- PROFILE SETTINGS MODAL -->
 <div class="modal-overlay" id="profile-modal">
-  <div class="modal" style="width:420px">
+  <div class="modal" style="width:440px">
     <div class="modal-header">
       <h3>Profile Settings</h3>
       <button class="btn ghost" onclick="closeProfileSettings()">✕</button>
     </div>
     <div class="modal-body">
-      <div class="auth-field"><label>Username</label><input type="text" id="prof-username" placeholder="your-username"/><div class="username-preview">Share your profile: <span id="prof-url-preview">...</span></div></div>
+      <!-- Avatar -->
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:18px">
+        <div id="prof-avatar-preview" style="width:56px;height:56px;border-radius:50%;background:var(--surface3);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--muted);overflow:hidden;flex-shrink:0;cursor:pointer;position:relative" onclick="document.getElementById('prof-avatar-input').click()">
+          <span id="prof-avatar-letter">?</span>
+          <img id="prof-avatar-img" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none"/>
+        </div>
+        <div>
+          <button class="btn sm" onclick="document.getElementById('prof-avatar-input').click()">Change avatar</button>
+          <input type="file" id="prof-avatar-input" accept="image/*" style="display:none" onchange="handleAvatarUpload(this)"/>
+          <div style="font-size:10px;color:var(--hint);margin-top:4px">JPG or PNG, max 1MB</div>
+        </div>
+      </div>
+      <div class="auth-field"><label>Username</label><input type="text" id="prof-username" disabled style="opacity:.6;cursor:not-allowed"/><div class="username-preview">Share your profile: <span id="prof-url-preview">...</span></div></div>
       <div class="auth-field"><label>Display name</label><input type="text" id="prof-display" placeholder="How your name appears publicly"/></div>
+      <div class="auth-field"><label>Bio</label><textarea id="prof-bio" placeholder="Tell people about your betting style..." style="width:100%;min-height:60px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;padding:10px 12px;outline:none;resize:vertical"></textarea></div>
       <div style="display:flex;align-items:center;gap:10px;margin:16px 0">
         <input type="checkbox" id="prof-public" style="accent-color:var(--accent);width:16px;height:16px"/>
         <div>
@@ -2052,6 +2104,21 @@ async function loadProfile() {
   currentProfile = data;
   if (data) {
     document.getElementById('user-email-display').textContent = data.username || currentUser.email;
+    // Show "My profile" button if public
+    const btn = document.getElementById('btn-my-profile');
+    if (btn) btn.style.display = data.is_public ? '' : 'none';
+  }
+  // Welcome banner
+  const wb = document.getElementById('welcome-banner');
+  const wn = document.getElementById('welcome-name');
+  if (wb && wn && data) {
+    wn.textContent = data.display_name || data.username || 'there';
+    wb.style.display = '';
+    setTimeout(() => { wb.style.display = 'none'; }, 5000);
+  }
+  // Email verify banner
+  if (currentUser && !currentUser.email_confirmed_at) {
+    document.getElementById('verify-banner').style.display = '';
   }
 }
 
@@ -2076,8 +2143,15 @@ function showProfileSettings() {
   if (currentProfile) {
     document.getElementById('prof-username').value = currentProfile.username || '';
     document.getElementById('prof-display').value = currentProfile.display_name || '';
+    document.getElementById('prof-bio').value = currentProfile.bio || '';
     document.getElementById('prof-public').checked = currentProfile.is_public || false;
-    document.getElementById('prof-url-preview').textContent = (currentProfile.username || '...') ;
+    document.getElementById('prof-url-preview').textContent = currentProfile.username || '...';
+    // Avatar
+    const letter = (currentProfile.display_name || currentProfile.username || '?')[0].toUpperCase();
+    document.getElementById('prof-avatar-letter').textContent = letter;
+    const img = document.getElementById('prof-avatar-img');
+    if (currentProfile.avatar_url) { img.src = currentProfile.avatar_url; img.style.display = ''; }
+    else { img.style.display = 'none'; }
   }
   document.getElementById('profile-modal').classList.add('open');
 }
@@ -2085,20 +2159,78 @@ function closeProfileSettings() {
   document.getElementById('profile-modal').classList.remove('open');
 }
 async function saveProfileSettings() {
-  const username = document.getElementById('prof-username').value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
   const display_name = document.getElementById('prof-display').value.trim();
+  const bio = document.getElementById('prof-bio').value.trim();
   const is_public = document.getElementById('prof-public').checked;
-  if (!username) return alert('Please enter a username.');
-  const { error } = await sb.from('profiles').update({ username, display_name, is_public }).eq('id', currentUser.id);
+  const updates = { display_name, bio, is_public };
+  if (pendingAvatarUrl) updates.avatar_url = pendingAvatarUrl;
+  const { error } = await sb.from('profiles').update(updates).eq('id', currentUser.id);
   if (error) return alert('Error: ' + error.message);
-  currentProfile = { ...currentProfile, username, display_name, is_public };
-  document.getElementById('user-email-display').textContent = username;
+  currentProfile = { ...currentProfile, ...updates };
+  pendingAvatarUrl = null;
+  document.getElementById('user-email-display').textContent = currentProfile.username;
+  const btn = document.getElementById('btn-my-profile');
+  if (btn) btn.style.display = is_public ? '' : 'none';
   closeProfileSettings();
 }
 
-// Update profile URL preview on input
-document.getElementById('prof-username')?.addEventListener('input', function() {
-  document.getElementById('prof-url-preview').textContent = this.value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '') || '...';
+let pendingAvatarUrl = null;
+async function handleAvatarUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 1024 * 1024) return alert('Image must be under 1MB.');
+  const ext = file.name.split('.').pop().toLowerCase();
+  const path = `avatars/${currentUser.id}.${ext}`;
+  const { error } = await sb.storage.from('avatars').upload(path, file, { upsert: true, contentType: file.type });
+  if (error) return alert('Upload error: ' + error.message);
+  const { data: urlData } = sb.storage.from('avatars').getPublicUrl(path);
+  pendingAvatarUrl = urlData.publicUrl + '?t=' + Date.now();
+  // Preview
+  const img = document.getElementById('prof-avatar-img');
+  img.src = pendingAvatarUrl; img.style.display = '';
+}
+
+function viewOwnProfile() {
+  if (currentProfile?.username) {
+    window.open(window.location.pathname + '?u=' + currentProfile.username, '_blank');
+  }
+}
+
+// Search profiles
+let searchTimeout = null;
+async function searchProfiles(query) {
+  const results = document.getElementById('search-results');
+  if (!query || query.length < 1) { results.style.display = 'none'; return; }
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(async () => {
+    const { data } = await sb.from('profiles')
+      .select('username, display_name, avatar_url, member_number')
+      .eq('is_public', true)
+      .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
+      .limit(8);
+    if (!data || !data.length) {
+      results.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--muted);text-align:center">No users found</div>';
+      results.style.display = 'block';
+      return;
+    }
+    results.innerHTML = data.map(p => {
+      const avatar = p.avatar_url
+        ? `<div class="search-avatar"><img src="${p.avatar_url}"/></div>`
+        : `<div class="search-avatar">${(p.display_name || p.username || '?')[0].toUpperCase()}</div>`;
+      const badge = p.member_number <= 50 ? ' <span style="color:#ffd700;font-size:10px">★</span>' : '';
+      return `<div class="search-item" onclick="window.open('${window.location.pathname}?u=${p.username}','_blank')">
+        ${avatar}
+        <div><div class="search-name">${p.display_name || p.username}${badge}</div><div class="search-user">@${p.username}</div></div>
+      </div>`;
+    }).join('');
+    results.style.display = 'block';
+  }, 300);
+}
+// Close search on click outside
+document.addEventListener('mousedown', e => {
+  const sr = document.getElementById('search-results');
+  const si = document.getElementById('profile-search');
+  if (sr && !sr.contains(e.target) && !si.contains(e.target)) sr.style.display = 'none';
 });
 
 // Public profile view
@@ -2112,14 +2244,41 @@ async function checkPublicProfile() {
   document.getElementById('profile-page').style.display = '';
   document.getElementById('prof-name').textContent = u;
   document.getElementById('prof-sub').textContent = 'Loading...';
-  const { data, error } = await sb.rpc('public_profile_stats', { p_username: u });
-  if (error || !data) {
+
+  // Fetch profile info
+  const { data: profile } = await sb.from('profiles')
+    .select('username, display_name, avatar_url, bio, member_number, is_public')
+    .eq('username', u).eq('is_public', true).single();
+  if (!profile) {
     document.getElementById('prof-sub').textContent = 'Profile not found or is private.';
     return true;
   }
-  const d = data;
-  document.getElementById('prof-name').textContent = d.display_name || d.username;
-  document.getElementById('prof-sub').textContent = '@' + d.username;
+  // Avatar
+  const avatarEl = document.getElementById('prof-page-avatar');
+  if (profile.avatar_url) {
+    avatarEl.innerHTML = `<img src="${profile.avatar_url}"/>`;
+  } else {
+    avatarEl.innerHTML = `<span>${(profile.display_name || profile.username || '?')[0].toUpperCase()}</span>`;
+  }
+  document.getElementById('prof-name').textContent = profile.display_name || profile.username;
+  document.getElementById('prof-sub').textContent = '@' + profile.username;
+  // Bio
+  const bioEl = document.getElementById('prof-page-bio');
+  bioEl.textContent = profile.bio || '';
+  bioEl.style.display = profile.bio ? '' : 'none';
+  // Early member badge
+  const badgeArea = document.getElementById('prof-badge-area');
+  if (profile.member_number && profile.member_number <= 50) {
+    badgeArea.innerHTML = `<div class="early-badge">Early Member #${profile.member_number}</div>`;
+  }
+
+  // Fetch stats
+  const { data: statsData } = await sb.rpc('public_profile_stats', { p_username: u });
+  if (!statsData) {
+    document.getElementById('prof-stats').innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px">No betting data yet</div>';
+    return true;
+  }
+  const d = statsData;
   const roi = d.total_staked > 0 ? ((d.total_pl / d.total_staked) * 100).toFixed(1) : '0.0';
   document.getElementById('prof-stats').innerHTML = `
     <div class="stat-card green"><div class="stat-label">Record</div><div class="stat-value">${d.wins}W – ${d.losses}L – ${d.pushes}P</div><div class="stat-sub">${d.total_bets} total bets</div></div>
