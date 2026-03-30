@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Veritas v0.24</title>
+<title>Veritas v0.25</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
@@ -229,7 +229,7 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
       <div class="logo">Veritas</div>
       <span style="font-size:11px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;font-weight:500">Profit Tracker</span>
     </div>
-    <div style="font-size:10px;color:var(--hint);letter-spacing:0.04em">made by tyler &#x2E3A; v0.24</div>
+    <div style="font-size:10px;color:var(--hint);letter-spacing:0.04em">made by tyler &#x2E3A; v0.25</div>
   </div>
   <div class="header-right">
     <div class="roster-status">
@@ -1166,6 +1166,7 @@ function addProp(){
   if(!odds||odds<1.01){alert('Decimal odds must be ≥ 1.01');return;}
   bets.unshift({id:Date.now(),kind:'prop',sport,team,player,line,stake,odds,result,date});
   save();render();
+  if (result === 'pending') gradeFromPostGame();
   // Reset form
   cselSetValue('p-sport', '');
   cselSetOptions('p-team', [], '— select team —');
@@ -1196,6 +1197,7 @@ function addParlay(){
   const ps=Object.keys(sc).sort((a,b)=>sc[b]-sc[a])[0]||'';
   bets.unshift({id:Date.now(),kind:'parlay',sport:ps,name:name||('Parlay – '+date),stake,odds,result,date,legs});
   save();render();
+  if (result === 'pending') gradeFromPostGame();
   document.getElementById('pl-name').value='';document.getElementById('pl-stake').value='';document.getElementById('pl-odds').value='';
   document.getElementById('legs-container').innerHTML='';legIdCounter=0;addLeg();addLeg();
 }
@@ -1324,6 +1326,86 @@ function gradeBet(side, target, current) {
   if (side === 'over')  return current > target ? 'win' : current === target ? 'push' : 'loss';
   if (side === 'under') return current < target ? 'win' : current === target ? 'push' : 'loss';
   return 'pending';
+}
+
+// Grade pending bets using post-game stats (works for finished games not in live cache)
+async function gradeFromPostGame() {
+  const pendingBets = bets.filter(b => b.result === 'pending' && (b.kind === 'prop' || b.kind === 'parlay'));
+  if (!pendingBets.length) return;
+
+  // Collect unique dates from pending bets
+  const dates = [...new Set(pendingBets.map(b => b.date).filter(Boolean))];
+  if (!dates.length) return;
+
+  try {
+    // Fetch games for each date
+    const allGameIds = [];
+    for (const d of dates) {
+      const res = await fetch(`${BASE}/nba/v1/games?dates[]=${d}&per_page=50`, { headers: HEADERS });
+      if (!res.ok) continue;
+      const json = await res.json();
+      const finished = (json.data || []).filter(g => g.status === 'Final');
+      finished.forEach(g => allGameIds.push(g.id));
+    }
+    if (!allGameIds.length) return;
+
+    // Fetch stats for finished games
+    const params = allGameIds.map(id => `game_ids[]=${id}`).join('&');
+    const res = await fetch(`${BASE}/nba/v1/stats?${params}&per_page=100`, { headers: HEADERS });
+    if (!res.ok) return;
+    const json = await res.json();
+    const stats = json.data || [];
+
+    // Build lookup: player name → stats
+    const postGameStats = {};
+    stats.forEach(s => {
+      if (!s.player) return;
+      const name = `${s.player.first_name} ${s.player.last_name}`.toLowerCase();
+      postGameStats[name] = {
+        pts: s.pts || 0, reb: s.reb || 0, ast: s.ast || 0,
+        stl: s.stl || 0, blk: s.blk || 0, turnover: s.turnover || 0,
+        fg3m: s.fg3m || 0,
+      };
+    });
+
+    // Grade pending bets
+    let graded = false;
+    bets.forEach(b => {
+      if (b.result !== 'pending') return;
+      if (b.kind === 'prop') {
+        const parsed = parseBetLine(b.line);
+        if (!parsed) return;
+        const ps = postGameStats[b.player?.toLowerCase()];
+        if (!ps) return;
+        const current = getStatValue(ps, parsed.statKey);
+        b.result = gradeBet(parsed.side, parsed.target, current);
+        graded = true;
+      } else if (b.kind === 'parlay') {
+        let anyChange = false;
+        b.legs.forEach(leg => {
+          if (leg.result !== 'pending') return;
+          const parsed = parseBetLine(leg.line);
+          if (!parsed) return;
+          const ps = postGameStats[leg.player?.toLowerCase()];
+          if (!ps) return;
+          const current = getStatValue(ps, parsed.statKey);
+          leg.result = gradeBet(parsed.side, parsed.target, current);
+          anyChange = true;
+        });
+        if (anyChange) {
+          const lr = b.legs.map(l => l.result);
+          if (lr.every(r => r === 'win')) b.result = 'win';
+          else if (lr.some(r => r === 'loss')) b.result = 'loss';
+          else if (lr.every(r => r === 'push')) b.result = 'push';
+          else if (!lr.some(r => r === 'pending') && lr.some(r => r === 'win')) b.result = 'partial';
+          graded = true;
+        }
+      }
+    });
+    if (graded) { save(); render(); console.log('[PostGame] graded bets from finished games'); }
+  } catch(e) {
+    console.error('[PostGame] error:', e.message);
+  }
 }
 
 // Fetch live box scores (GOAT tier) for real-time meters and auto-grading
@@ -1791,6 +1873,7 @@ function confirmImport() {
   });
   save();
   render();
+  gradeFromPostGame();
   resetImportPane();
   switchTab('prop');
 }
