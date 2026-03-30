@@ -553,6 +553,7 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
             </div>
           </div>
           <button class="btn primary" onclick="addProp()" style="height:36px;align-self:end">+ Add prop</button>
+          <button class="btn" onclick="clearPropForm()" style="height:36px;align-self:end;font-size:12px;color:var(--muted)">Clear</button>
         </div>
       </div>
 
@@ -994,6 +995,32 @@ function clearSelectedProp() {
   document.querySelectorAll('.prop-btn').forEach(b => b.classList.remove('selected-over','selected-under'));
   document.getElementById('selected-prop-row').style.display = 'none';
   document.getElementById('p-odds').value = '';
+}
+
+function clearPropForm() {
+  // Reset sport
+  document.getElementById('p-sport').value = '';
+  document.querySelector('#p-sport-wrap .csel-display').textContent = '— select sport —';
+  document.querySelector('#p-sport-wrap .csel-display').classList.add('placeholder');
+  // Reset team
+  document.getElementById('p-team').value = '';
+  document.querySelector('#p-team-wrap .csel-display').textContent = '— select team —';
+  document.querySelector('#p-team-wrap .csel-display').classList.add('placeholder','disabled');
+  // Reset player
+  document.getElementById('p-pi').value = '';
+  document.getElementById('p-ac').innerHTML = '';
+  document.getElementById('p-ac').classList.remove('open');
+  // Reset date
+  document.getElementById('p-date').value = new Date().toISOString().slice(0,10);
+  // Reset props
+  clearSelectedProp();
+  hideProps();
+  hideManualLine();
+  // Reset stake, odds, result
+  document.getElementById('p-stake').value = '';
+  document.getElementById('p-odds').value = '';
+  document.getElementById('p-result').value = 'pending';
+  document.querySelector('#p-result-wrap .csel-display').textContent = 'Pending';
 }
 
 function showManualLine() { document.getElementById('manual-line-row').style.display = ''; }
