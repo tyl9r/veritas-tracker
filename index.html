@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Veritas v0.12</title>
+<title>Veritas v0.13</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -145,6 +145,15 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
 .live-meter-stat{color:var(--text);font-weight:500}
 .live-meter-target{color:var(--muted)}
 .live-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:4px;animation:blink 1s infinite;vertical-align:middle}
+.settings-menu{position:absolute;top:calc(100% + 6px);right:0;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-lg);min-width:220px;z-index:200;display:none;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.settings-menu.open{display:block}
+.settings-item{padding:10px 14px;cursor:pointer;transition:background .12s;border-bottom:1px solid var(--border)}
+.settings-item:last-child{border-bottom:none}
+.settings-item:hover{background:var(--surface3)}
+.settings-item.danger:hover{background:var(--red-bg)}
+.settings-item-label{display:block;font-size:13px;font-weight:500;color:var(--text)}
+.settings-item.danger .settings-item-label{color:var(--red)}
+.settings-item-desc{display:block;font-size:10px;color:var(--muted);margin-top:2px}
 @media(max-width:900px){.stats-row{grid-template-columns:repeat(2,1fr)}.main{padding:1rem}}
 </style>
 </head>
@@ -155,16 +164,25 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
       <div class="logo">Veritas</div>
       <span style="font-size:11px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;font-weight:500">Profit Tracker</span>
     </div>
-    <div style="font-size:10px;color:var(--hint)">Built by Tyler — Made with Claude &nbsp;·&nbsp; v0.12</div>
+    <div style="font-size:10px;color:var(--hint)">Built by Tyler — Made with Claude &nbsp;·&nbsp; v0.13</div>
   </div>
   <div class="header-right">
     <div class="roster-status">
       <div class="rdot loading" id="rdot"></div>
       <span id="rtext">Loading rosters…</span>
     </div>
-    <div class="header-actions">
-      <button class="btn sm" onclick="exportCSV()">Export CSV</button>
-      <button class="btn sm" onclick="clearAll()">Clear all</button>
+    <div class="settings-wrap" style="position:relative">
+      <button class="btn sm" onclick="toggleSettings()" id="settings-btn">⚙ Settings</button>
+      <div class="settings-menu" id="settings-menu">
+        <div class="settings-item" onclick="exportCSV();toggleSettings()">
+          <span class="settings-item-label">Export CSV</span>
+          <span class="settings-item-desc">Download all bets as a spreadsheet</span>
+        </div>
+        <div class="settings-item danger" onclick="toggleSettings();clearAll()">
+          <span class="settings-item-label">Clear all bets</span>
+          <span class="settings-item-desc">Permanently remove all bet history</span>
+        </div>
+      </div>
     </div>
   </div>
 </header>
@@ -993,6 +1011,8 @@ function cycleLegResult(betId, legIdx, event){
   else b.result='pending';
   save();render();
 }
+function toggleSettings(){document.getElementById('settings-menu').classList.toggle('open');}
+document.addEventListener('mousedown',e=>{const m=document.getElementById('settings-menu'),b=document.getElementById('settings-btn');if(m&&!m.contains(e.target)&&!b.contains(e.target))m.classList.remove('open');});
 function deleteBet(id){if(!confirm('Delete this bet?'))return;bets=bets.filter(b=>b.id!==id);expandedIds.delete(id);save();render();}
 function clearAll(){if(!confirm('Clear ALL bets?'))return;bets=[];expandedIds.clear();save();render();}
 function toggleExpand(id){if(expandedIds.has(id))expandedIds.delete(id);else expandedIds.add(id);render();}
