@@ -3,9 +3,10 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Veritas v0.32</title>
+<title>Veritas v0.33</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -252,10 +253,134 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
   .logo{font-size:18px}
   table{min-width:420px}
 }
+/* ── AUTH PAGE ─────────────────────────────────────────────────────────── */
+.auth-page{position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;align-items:center;justify-content:center;background-image:radial-gradient(circle at 50% 0%,rgba(47,204,108,0.03) 0%,transparent 60%)}
+.auth-page.hidden{display:none}
+.auth-container{width:100%;max-width:400px;padding:20px}
+.auth-header{text-align:center;margin-bottom:32px}
+.auth-logo{font-family:'DM Mono',monospace;font-size:36px;font-weight:500;letter-spacing:-0.03em;color:var(--accent);margin-bottom:4px}
+.auth-tagline{font-size:12px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;font-weight:500}
+.auth-byline{font-size:10px;color:var(--hint);margin-top:8px;letter-spacing:0.04em}
+.auth-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px 24px;position:relative;overflow:hidden}
+.auth-card::before{content:'';position:absolute;top:-1px;left:20px;right:20px;height:1px;background:var(--grad);opacity:.3}
+.auth-tabs{display:flex;gap:2px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:3px;margin-bottom:24px}
+.auth-tab{flex:1;padding:8px 16px;border-radius:5px;border:none;background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;text-align:center}
+.auth-tab:hover{color:var(--text)}
+.auth-tab.active{background:var(--surface3);color:var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.auth-field{margin-bottom:16px}
+.auth-field label{display:block;font-size:11px;color:var(--muted);font-weight:500;letter-spacing:.04em;margin-bottom:5px}
+.auth-field input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;padding:10px 12px;outline:none;transition:border-color .15s}
+.auth-field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(47,204,108,0.08)}
+.auth-field input::placeholder{color:var(--hint)}
+.pw-strength{height:3px;background:var(--surface3);border-radius:2px;margin-top:6px;overflow:hidden}
+.pw-strength-bar{height:100%;border-radius:2px;transition:width .3s,background .3s;width:0%}
+.auth-btn{width:100%;padding:10px 16px;border-radius:var(--radius);border:none;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s}
+.auth-btn.primary{background:var(--accent);color:#0a0a0c;margin-bottom:12px}
+.auth-btn.primary:hover{opacity:.85}
+.auth-btn.primary:active{transform:scale(0.98)}
+.auth-btn:disabled{opacity:.5;cursor:not-allowed}
+.auth-divider{display:flex;align-items:center;gap:12px;margin:16px 0}
+.auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:var(--border2)}
+.auth-divider span{font-size:11px;color:var(--hint);text-transform:uppercase;letter-spacing:.06em}
+.oauth-btn{width:100%;padding:10px 16px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:8px}
+.oauth-btn:hover{background:var(--surface3);border-color:rgba(255,255,255,0.15)}
+.oauth-btn:active{transform:scale(0.98)}
+.oauth-icon{width:18px;height:18px}
+.auth-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;font-size:12px}
+.auth-row label{display:flex;align-items:center;gap:6px;color:var(--muted);cursor:pointer}
+.auth-row input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px}
+.auth-row a{color:var(--accent);text-decoration:none;font-size:12px}
+.auth-row a:hover{text-decoration:underline}
+.auth-error{background:var(--red-bg);border:1px solid rgba(232,69,69,0.15);border-radius:var(--radius);padding:8px 12px;font-size:12px;color:var(--red);margin-bottom:14px;display:none}
+.auth-success{background:var(--green-bg);border:1px solid rgba(47,204,108,0.15);border-radius:var(--radius);padding:8px 12px;font-size:12px;color:var(--green);margin-bottom:14px;display:none}
+.username-preview{font-size:10px;color:var(--hint);margin-top:4px;font-family:'DM Mono',monospace}
+.username-preview span{color:var(--accent)}
+.auth-terms{font-size:10px;color:var(--hint);text-align:center;margin-top:14px;line-height:1.5}
+.auth-terms a{color:var(--muted);text-decoration:none}
+.auth-terms a:hover{text-decoration:underline}
+.user-pill{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;padding:4px 10px;border-radius:99px;border:1px solid var(--border);transition:all .15s}
+.user-pill:hover{border-color:var(--border2);color:var(--text)}
+.user-menu{position:absolute;top:calc(100% + 6px);right:0;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-lg);min-width:200px;z-index:200;display:none;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.user-menu.open{display:block}
+@media(max-width:440px){.auth-container{padding:16px}.auth-card{padding:22px 18px}.auth-logo{font-size:30px}}
+/* ── PUBLIC PROFILE ───────────────────────────────────────────────────── */
+.profile-page{max-width:600px;margin:0 auto;padding:2rem}
+.profile-header{text-align:center;margin-bottom:24px}
+.profile-name{font-family:'DM Mono',monospace;font-size:24px;color:var(--accent);margin-bottom:4px}
+.profile-sub{font-size:12px;color:var(--muted)}
+.profile-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px}
 </style>
 </head>
 <body>
 <div class="top-bar"></div>
+
+<!-- AUTH PAGE -->
+<div class="auth-page" id="auth-page">
+  <div class="auth-container">
+    <div class="auth-header">
+      <div class="auth-logo">Veritas</div>
+      <div class="auth-tagline">Profit Tracker</div>
+      <div class="auth-byline">made by tyler</div>
+    </div>
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="atab-signin" onclick="switchAuthTab('signin')">Sign In</button>
+        <button class="auth-tab" id="atab-signup" onclick="switchAuthTab('signup')">Create Account</button>
+      </div>
+      <div class="auth-error" id="auth-error"></div>
+      <div class="auth-success" id="auth-success"></div>
+      <!-- SIGN IN -->
+      <div id="form-signin">
+        <div class="auth-field"><label>Email</label><input type="email" id="si-email" placeholder="you@example.com"/></div>
+        <div class="auth-field"><label>Password</label><input type="password" id="si-password" placeholder="Enter your password" onkeydown="if(event.key==='Enter')handleSignIn()"/></div>
+        <div class="auth-row">
+          <label><input type="checkbox" checked/> Remember me</label>
+          <a href="#" onclick="handleForgot();return false">Forgot password?</a>
+        </div>
+        <button class="auth-btn primary" id="btn-signin" onclick="handleSignIn()">Sign In</button>
+        <div class="auth-divider"><span>or</span></div>
+        <button class="oauth-btn" onclick="handleGoogle()">
+          <svg class="oauth-icon" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          Continue with Google
+        </button>
+      </div>
+      <!-- SIGN UP -->
+      <div id="form-signup" style="display:none">
+        <div class="auth-field"><label>Username</label><input type="text" id="su-username" placeholder="Choose a username" oninput="updateUsernamePreview()"/><div class="username-preview" id="username-preview">Your profile: veritas/?u=<span>...</span></div></div>
+        <div class="auth-field"><label>Email</label><input type="email" id="su-email" placeholder="you@example.com"/></div>
+        <div class="auth-field"><label>Password</label><input type="password" id="su-password" placeholder="Create a password (min 6 chars)" oninput="updatePwStrength()"/><div class="pw-strength"><div class="pw-strength-bar" id="pw-bar"></div></div></div>
+        <div class="auth-field"><label>Confirm password</label><input type="password" id="su-confirm" placeholder="Confirm your password" onkeydown="if(event.key==='Enter')handleSignUp()"/></div>
+        <button class="auth-btn primary" id="btn-signup" onclick="handleSignUp()">Create Account</button>
+        <div class="auth-divider"><span>or</span></div>
+        <button class="oauth-btn" onclick="handleGoogle()">
+          <svg class="oauth-icon" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          Continue with Google
+        </button>
+        <div class="auth-terms">By creating an account, you agree to the<br/><a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PUBLIC PROFILE PAGE (shown for ?u=username) -->
+<div id="profile-page" style="display:none">
+  <header style="margin-top:2px">
+    <div style="display:flex;align-items:baseline;gap:12px">
+      <div class="logo">Veritas</div>
+      <span style="font-size:11px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;font-weight:500">Profit Tracker</span>
+    </div>
+  </header>
+  <div class="profile-page">
+    <div class="profile-header">
+      <div class="profile-name" id="prof-name"></div>
+      <div class="profile-sub" id="prof-sub"></div>
+    </div>
+    <div class="profile-stats" id="prof-stats"></div>
+  </div>
+</div>
+
+<!-- MAIN APP (hidden until authenticated) -->
+<div id="app-main" style="display:none">
 <header style="margin-top:2px">
   <div style="display:flex;flex-direction:column;gap:2px">
     <div style="display:flex;align-items:baseline;gap:12px">
@@ -276,12 +401,20 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
           <span class="settings-item-label">Export CSV</span>
           <span class="settings-item-desc">Download all bets as a spreadsheet</span>
         </div>
+        <div class="settings-item" onclick="toggleSettings();showProfileSettings()">
+          <span class="settings-item-label">Profile settings</span>
+          <span class="settings-item-desc">Username, display name, public profile</span>
+        </div>
         <div class="settings-item danger" onclick="toggleSettings();clearAll()">
           <span class="settings-item-label">Clear all bets</span>
           <span class="settings-item-desc">Permanently remove all bet history</span>
         </div>
+        <div class="settings-item" onclick="handleSignOut()" style="cursor:pointer">
+          <span class="settings-item-label" style="color:var(--muted)">Sign out</span>
+          <span class="settings-item-desc" id="user-email-display"></span>
+        </div>
         <div class="settings-item" style="cursor:default;border-top:1px solid var(--border)">
-          <span class="settings-item-desc" style="text-align:center;width:100%;color:var(--muted);font-family:'DM Mono',monospace">v0.32</span>
+          <span class="settings-item-desc" style="text-align:center;width:100%;color:var(--muted);font-family:'DM Mono',monospace">v0.33</span>
         </div>
       </div>
     </div>
@@ -454,8 +587,40 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
     </div>
   </div>
 </div>
+<!-- PROFILE SETTINGS MODAL -->
+<div class="modal-overlay" id="profile-modal">
+  <div class="modal" style="width:420px">
+    <div class="modal-header">
+      <h3>Profile Settings</h3>
+      <button class="btn ghost" onclick="closeProfileSettings()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="auth-field"><label>Username</label><input type="text" id="prof-username" placeholder="your-username"/><div class="username-preview">Share your profile: <span id="prof-url-preview">...</span></div></div>
+      <div class="auth-field"><label>Display name</label><input type="text" id="prof-display" placeholder="How your name appears publicly"/></div>
+      <div style="display:flex;align-items:center;gap:10px;margin:16px 0">
+        <input type="checkbox" id="prof-public" style="accent-color:var(--accent);width:16px;height:16px"/>
+        <div>
+          <div style="font-size:13px;font-weight:500;color:var(--text)">Public profile</div>
+          <div style="font-size:11px;color:var(--muted)">Allow others to see your betting record and stats</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px">
+        <button class="btn" onclick="closeProfileSettings()">Cancel</button>
+        <button class="btn primary" onclick="saveProfileSettings()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+</div><!-- /app-main -->
 
 <script>
+// ── SUPABASE ──────────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://yguydscldsffetqtqrkw.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlndXlkc2NsZHNmZmV0cXRxcmt3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4MzUyNDEsImV4cCI6MjA5MDQxMTI0MX0.1uHPIQcfIKdKOkciUPRkB5DkjuKeqOoF3p2plrC3w_c';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let currentUser = null;
+let currentProfile = null;
+
 // ── API CONFIG ─────────────────────────────────────────────────────────────
 const API_KEY = '97a56568-8807-4f08-ad68-8a40f9d0187e';
 const HEADERS  = { 'Authorization': API_KEY };
@@ -1142,7 +1307,19 @@ let activeFilter='all', legIdCounter=0, expandedIds=new Set();
 
 ['p-date','pl-date'].forEach(id => { const el=document.getElementById(id); if(el) el.valueAsDate=new Date(); });
 
-function save(){try{localStorage.setItem('bettrack_v9',JSON.stringify(bets));}catch(e){}}
+function save(){
+  try{localStorage.setItem('bettrack_v9',JSON.stringify(bets));}catch(e){}
+  // Fire-and-forget cloud sync
+  if (currentUser) {
+    const rows = bets.map(b => ({
+      ...b, user_id: currentUser.id,
+      legs: b.legs ? JSON.stringify(b.legs) : null
+    }));
+    sb.from('bets').upsert(rows, { onConflict: 'id' }).then(({error}) => {
+      if (error) console.warn('[Cloud] sync error:', error.message);
+    });
+  }
+}
 function toWin(s,o){return s*(o-1);}
 function pl(b){if(b.result==='win')return toWin(b.stake,b.odds);if(b.result==='loss')return -b.stake;return 0;}
 function fmt(n){return(n>=0?'+':'-')+'$'+Math.abs(n).toFixed(2);}
@@ -1345,8 +1522,8 @@ function cycleLegResult(betId, legIdx, event){
 }
 function toggleSettings(){document.getElementById('settings-menu').classList.toggle('open');}
 document.addEventListener('mousedown',e=>{const m=document.getElementById('settings-menu'),b=document.getElementById('settings-btn');if(m&&!m.contains(e.target)&&!b.contains(e.target))m.classList.remove('open');});
-function deleteBet(id){if(!confirm('Delete this bet?'))return;bets=bets.filter(b=>b.id!==id);expandedIds.delete(id);save();render();}
-function clearAll(){if(!confirm('Clear ALL bets?'))return;bets=[];expandedIds.clear();save();render();}
+function deleteBet(id){if(!confirm('Delete this bet?'))return;bets=bets.filter(b=>b.id!==id);expandedIds.delete(id);save();render();if(currentUser)sb.from('bets').delete().eq('id',id).then(()=>{});}
+function clearAll(){if(!confirm('Clear ALL bets?'))return;if(currentUser)sb.from('bets').delete().eq('user_id',currentUser.id).then(()=>{});bets=[];expandedIds.clear();save();render();}
 function toggleExpand(id){if(expandedIds.has(id))expandedIds.delete(id);else expandedIds.add(id);render();}
 function setFilter(f){activeFilter=f;render();}
 
@@ -1765,12 +1942,240 @@ function render(){
 
 window.addEventListener('resize',()=>{const s=[...bets.filter(b=>b.result!=='pending')].sort((a,b)=>a.date.localeCompare(b.date)||a.id-b.id);let c=0;drawChart([0,...s.map(b=>{c+=pl(b);return c;})]);});
 
+// ── AUTH ──────────────────────────────────────────────────────────────────
+function switchAuthTab(mode) {
+  document.getElementById('form-signin').style.display = mode === 'signin' ? '' : 'none';
+  document.getElementById('form-signup').style.display = mode === 'signup' ? '' : 'none';
+  document.getElementById('atab-signin').classList.toggle('active', mode === 'signin');
+  document.getElementById('atab-signup').classList.toggle('active', mode === 'signup');
+  hideAuthMsg();
+}
+function showAuthError(msg) {
+  const el = document.getElementById('auth-error');
+  el.textContent = msg; el.style.display = 'block';
+  document.getElementById('auth-success').style.display = 'none';
+}
+function showAuthSuccess(msg) {
+  const el = document.getElementById('auth-success');
+  el.textContent = msg; el.style.display = 'block';
+  document.getElementById('auth-error').style.display = 'none';
+}
+function hideAuthMsg() {
+  document.getElementById('auth-error').style.display = 'none';
+  document.getElementById('auth-success').style.display = 'none';
+}
+function updateUsernamePreview() {
+  const val = document.getElementById('su-username').value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+  document.querySelector('#username-preview span').textContent = val || '...';
+}
+function updatePwStrength() {
+  const pw = document.getElementById('su-password').value;
+  const bar = document.getElementById('pw-bar');
+  let s = 0;
+  if (pw.length >= 6) s++; if (pw.length >= 10) s++;
+  if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) s++;
+  if (/\d/.test(pw)) s++; if (/[^A-Za-z0-9]/.test(pw)) s++;
+  const pct = Math.min(s / 5 * 100, 100);
+  bar.style.width = pct + '%';
+  bar.style.background = pct <= 20 ? 'var(--red)' : pct <= 60 ? 'var(--amber)' : 'var(--green)';
+}
+
+async function handleSignIn() {
+  const email = document.getElementById('si-email').value.trim();
+  const pw = document.getElementById('si-password').value;
+  if (!email) return showAuthError('Please enter your email.');
+  if (!pw) return showAuthError('Please enter your password.');
+  document.getElementById('btn-signin').disabled = true;
+  const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+  document.getElementById('btn-signin').disabled = false;
+  if (error) return showAuthError(error.message);
+}
+
+async function handleSignUp() {
+  const username = document.getElementById('su-username').value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+  const email = document.getElementById('su-email').value.trim();
+  const pw = document.getElementById('su-password').value;
+  const confirm = document.getElementById('su-confirm').value;
+  if (!username || username.length < 3) return showAuthError('Username must be at least 3 characters.');
+  if (!email) return showAuthError('Please enter your email.');
+  if (pw.length < 6) return showAuthError('Password must be at least 6 characters.');
+  if (pw !== confirm) return showAuthError('Passwords do not match.');
+  document.getElementById('btn-signup').disabled = true;
+  const { error } = await sb.auth.signUp({
+    email, password: pw,
+    options: { data: { username, display_name: username } }
+  });
+  document.getElementById('btn-signup').disabled = false;
+  if (error) return showAuthError(error.message);
+  showAuthSuccess('Account created! Check your email to confirm, then sign in.');
+}
+
+async function handleGoogle() {
+  await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin + window.location.pathname } });
+}
+
+async function handleForgot() {
+  const email = document.getElementById('si-email').value.trim();
+  if (!email) return showAuthError('Enter your email first, then click Forgot password.');
+  const { error } = await sb.auth.resetPasswordForEmail(email);
+  if (error) return showAuthError(error.message);
+  showAuthSuccess('Password reset email sent. Check your inbox.');
+}
+
+async function handleSignOut() {
+  await sb.auth.signOut();
+  currentUser = null;
+  currentProfile = null;
+  document.getElementById('app-main').style.display = 'none';
+  document.getElementById('auth-page').classList.remove('hidden');
+}
+
+async function loadFromCloud() {
+  if (!currentUser) return;
+  const { data } = await sb.from('bets')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .order('created_at', { ascending: false });
+  if (data && data.length) {
+    bets = data.map(b => ({
+      ...b,
+      legs: typeof b.legs === 'string' ? JSON.parse(b.legs) : b.legs
+    }));
+    localStorage.setItem('bettrack_v9', JSON.stringify(bets));
+    render();
+  }
+}
+
+async function loadProfile() {
+  if (!currentUser) return;
+  const { data } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  currentProfile = data;
+  if (data) {
+    document.getElementById('user-email-display').textContent = data.username || currentUser.email;
+  }
+}
+
+async function migrateLocalBets() {
+  if (!currentUser) return;
+  const local = JSON.parse(localStorage.getItem('bettrack_v9') || '[]');
+  if (!local.length) return;
+  // Check if user already has cloud bets
+  const { count } = await sb.from('bets').select('id', { count: 'exact', head: true }).eq('user_id', currentUser.id);
+  if (count > 0) return; // already has cloud data
+  // Migrate local bets to cloud
+  const rows = local.map(b => ({
+    ...b, user_id: currentUser.id,
+    legs: b.legs ? JSON.stringify(b.legs) : null
+  }));
+  await sb.from('bets').upsert(rows, { onConflict: 'id' });
+  console.log(`[Cloud] migrated ${rows.length} local bets`);
+}
+
+// Profile settings modal
+function showProfileSettings() {
+  if (currentProfile) {
+    document.getElementById('prof-username').value = currentProfile.username || '';
+    document.getElementById('prof-display').value = currentProfile.display_name || '';
+    document.getElementById('prof-public').checked = currentProfile.is_public || false;
+    document.getElementById('prof-url-preview').textContent = (currentProfile.username || '...') ;
+  }
+  document.getElementById('profile-modal').classList.add('open');
+}
+function closeProfileSettings() {
+  document.getElementById('profile-modal').classList.remove('open');
+}
+async function saveProfileSettings() {
+  const username = document.getElementById('prof-username').value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+  const display_name = document.getElementById('prof-display').value.trim();
+  const is_public = document.getElementById('prof-public').checked;
+  if (!username || username.length < 3) return alert('Username must be at least 3 characters.');
+  const { error } = await sb.from('profiles').update({ username, display_name, is_public }).eq('id', currentUser.id);
+  if (error) return alert('Error: ' + error.message);
+  currentProfile = { ...currentProfile, username, display_name, is_public };
+  document.getElementById('user-email-display').textContent = username;
+  closeProfileSettings();
+}
+
+// Update profile URL preview on input
+document.getElementById('prof-username')?.addEventListener('input', function() {
+  document.getElementById('prof-url-preview').textContent = this.value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '') || '...';
+});
+
+// Public profile view
+async function checkPublicProfile() {
+  const params = new URLSearchParams(window.location.search);
+  const u = params.get('u');
+  if (!u) return false;
+  // Show profile page, hide everything else
+  document.getElementById('auth-page').classList.add('hidden');
+  document.getElementById('app-main').style.display = 'none';
+  document.getElementById('profile-page').style.display = '';
+  document.getElementById('prof-name').textContent = u;
+  document.getElementById('prof-sub').textContent = 'Loading...';
+  const { data, error } = await sb.rpc('public_profile_stats', { p_username: u });
+  if (error || !data) {
+    document.getElementById('prof-sub').textContent = 'Profile not found or is private.';
+    return true;
+  }
+  const d = data;
+  document.getElementById('prof-name').textContent = d.display_name || d.username;
+  document.getElementById('prof-sub').textContent = '@' + d.username;
+  const roi = d.total_staked > 0 ? ((d.total_pl / d.total_staked) * 100).toFixed(1) : '0.0';
+  document.getElementById('prof-stats').innerHTML = `
+    <div class="stat-card green"><div class="stat-label">Record</div><div class="stat-value">${d.wins}W – ${d.losses}L – ${d.pushes}P</div><div class="stat-sub">${d.total_bets} total bets</div></div>
+    <div class="stat-card ${d.total_pl >= 0 ? 'green' : 'red'}"><div class="stat-label">Profit / Loss</div><div class="stat-value ${d.total_pl >= 0 ? 'pos' : 'neg'}">${d.total_pl >= 0 ? '+' : '-'}$${Math.abs(d.total_pl).toFixed(2)}</div><div class="stat-sub">ROI: ${d.total_pl >= 0 ? '+' : ''}${roi}%</div></div>
+  `;
+  return true;
+}
+
 // ── BOOT ──────────────────────────────────────────────────────────────────
-initSelects();
-render();
-switchTab('prop');
-loadAllTeams();
-startLivePolling();
+async function boot() {
+  // Check for public profile view first
+  if (await checkPublicProfile()) return;
+
+  // Check existing session
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    currentUser = session.user;
+    document.getElementById('auth-page').classList.add('hidden');
+    document.getElementById('app-main').style.display = '';
+    await migrateLocalBets();
+    await loadProfile();
+    await loadFromCloud();
+  }
+
+  // Listen for auth changes
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (session) {
+      currentUser = session.user;
+      document.getElementById('auth-page').classList.add('hidden');
+      document.getElementById('app-main').style.display = '';
+      await migrateLocalBets();
+      await loadProfile();
+      await loadFromCloud();
+      initSelects();
+      render();
+      switchTab('prop');
+      loadAllTeams();
+      startLivePolling();
+    } else {
+      currentUser = null;
+      currentProfile = null;
+      document.getElementById('app-main').style.display = 'none';
+      document.getElementById('auth-page').classList.remove('hidden');
+    }
+  });
+
+  // If already signed in, boot the app
+  if (session) {
+    initSelects();
+    render();
+    switchTab('prop');
+    loadAllTeams();
+    startLivePolling();
+  }
+}
+boot();
 
 // ── IMPORT BET SLIP ──────────────────────────────────────────────────────
 let importMode = 'screenshot';
