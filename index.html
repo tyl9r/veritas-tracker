@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Veritas v0.31</title>
+<title>Veritas v0.32</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
@@ -281,7 +281,7 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
           <span class="settings-item-desc">Permanently remove all bet history</span>
         </div>
         <div class="settings-item" style="cursor:default;border-top:1px solid var(--border)">
-          <span class="settings-item-desc" style="text-align:center;width:100%;color:var(--muted);font-family:'DM Mono',monospace">v0.31</span>
+          <span class="settings-item-desc" style="text-align:center;width:100%;color:var(--muted);font-family:'DM Mono',monospace">v0.32</span>
         </div>
       </div>
     </div>
@@ -954,9 +954,9 @@ function rebuildSportSelects() {
 }
 
 const ODDS_FMT_OPTIONS = [
-  { value: 'american', label: 'American' },
-  { value: 'decimal', label: 'Decimal' },
-  { value: 'fractional', label: 'Fractional' },
+  { value: 'american', label: 'American  (e.g. -110)' },
+  { value: 'decimal', label: 'Decimal  (e.g. 1.91)' },
+  { value: 'fractional', label: 'Fractional  (e.g. 10/11)' },
 ];
 let oddsFormat = 'american';
 
