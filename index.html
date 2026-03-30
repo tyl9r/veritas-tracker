@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Veritas v0.30</title>
+<title>Veritas v0.31</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
@@ -220,6 +220,8 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
 .parse-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
 @media(max-width:900px){.stats-row{grid-template-columns:repeat(2,1fr)}.main{padding:1rem}}
 @media(max-width:600px){
+  .mobile-after-sport{display:none}
+  .mobile-after-sport.show{display:flex}
   header{padding:0.75rem 1rem;flex-wrap:wrap;gap:8px}
   .header-right{width:100%;justify-content:space-between}
   .main{padding:0.75rem}
@@ -279,7 +281,7 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
           <span class="settings-item-desc">Permanently remove all bet history</span>
         </div>
         <div class="settings-item" style="cursor:default;border-top:1px solid var(--border)">
-          <span class="settings-item-desc" style="text-align:center;width:100%;color:var(--muted);font-family:'DM Mono',monospace">v0.30</span>
+          <span class="settings-item-desc" style="text-align:center;width:100%;color:var(--muted);font-family:'DM Mono',monospace">v0.31</span>
         </div>
       </div>
     </div>
@@ -312,14 +314,14 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
               <input type="hidden" id="p-sport" value=""/>
             </div>
           </div>
-          <div class="field"><label>Team</label>
+          <div class="field mobile-after-sport"><label>Team</label>
             <div class="csel" id="p-team-wrap">
               <div class="csel-display placeholder disabled" onclick="cselToggle('p-team')">— select team —</div>
               <div class="csel-drop" id="p-team-drop"></div>
               <input type="hidden" id="p-team" value=""/>
             </div>
           </div>
-          <div class="field"><label>Player</label>
+          <div class="field mobile-after-sport"><label>Player</label>
             <div class="player-wrap">
               <input id="p-pi" placeholder="Search or type…" autocomplete="off"
                 oninput="onPI(this,'p-sport','p-team','p-ac')"
@@ -356,9 +358,16 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
           </div>
         </div>
 
-        <div class="form-row" style="grid-template-columns:1fr 1fr 1fr auto;margin-top:10px">
+        <div class="form-row" style="grid-template-columns:1fr 0.6fr 1fr 1fr auto;margin-top:10px">
           <div class="field"><label>Stake ($)</label><input type="number" id="p-stake" placeholder="25" min="0.01" step="0.01"/></div>
-          <div class="field"><label>Decimal odds</label><input type="number" id="p-odds" placeholder="Auto-filled or enter manually" min="1.01" step="0.01"/></div>
+          <div class="field"><label>Format</label>
+            <div class="csel" id="odds-fmt-wrap">
+              <div class="csel-display" onclick="cselToggle('odds-fmt')">American</div>
+              <div class="csel-drop" id="odds-fmt-drop"></div>
+              <input type="hidden" id="odds-fmt" value="american"/>
+            </div>
+          </div>
+          <div class="field"><label id="odds-label">Odds</label><input type="text" id="p-odds" placeholder="-110"/></div>
           <div class="field"><label>Result</label>
             <div class="csel" id="p-result-wrap">
               <div class="csel-display" onclick="cselToggle('p-result')">Pending</div>
@@ -727,7 +736,12 @@ function selectProp(type, line, side, americanOdds, typeLabel) {
   const decimal = americanToDecimal(americanOdds);
   const label = `${side==='over'?'Over':'Under'} ${line} ${typeLabel}`;
   selectedPropLine = { line: label, type, side, odds: decimal };
-  if (decimal) document.getElementById('p-odds').value = decimal.toFixed(2);
+  if (decimal) {
+    const input = document.getElementById('p-odds');
+    if (oddsFormat === 'american') input.value = fmtAmerican(americanOdds);
+    else if (oddsFormat === 'fractional') input.value = decimalToFractional(decimal);
+    else input.value = decimal.toFixed(2);
+  }
   document.getElementById('selected-prop-label').textContent = `${label} · ${fmtAmerican(americanOdds)} (${decimal?.toFixed(2)} dec)`;
   document.getElementById('selected-prop-row').style.display = '';
 }
@@ -939,11 +953,74 @@ function rebuildSportSelects() {
   if (cur === 'NBA') cselSetValue('p-sport', cur);
 }
 
+const ODDS_FMT_OPTIONS = [
+  { value: 'american', label: 'American' },
+  { value: 'decimal', label: 'Decimal' },
+  { value: 'fractional', label: 'Fractional' },
+];
+let oddsFormat = 'american';
+
+function fractionalToDecimal(frac) {
+  const m = frac.match(/(\d+)\s*\/\s*(\d+)/);
+  if (!m) return null;
+  return (parseInt(m[1]) / parseInt(m[2])) + 1;
+}
+function decimalToAmerican(d) {
+  if (!d || d < 1.01) return null;
+  return d >= 2 ? Math.round((d - 1) * 100) : Math.round(-100 / (d - 1));
+}
+function decimalToFractional(d) {
+  if (!d || d < 1.01) return '';
+  const num = d - 1;
+  // Find a clean fraction
+  for (const den of [1,2,4,5,10,20,25,50,100]) {
+    const n = num * den;
+    if (Math.abs(n - Math.round(n)) < 0.01) return `${Math.round(n)}/${den}`;
+  }
+  return `${(num * 100).toFixed(0)}/100`;
+}
+function getDecimalOdds() {
+  const raw = document.getElementById('p-odds').value.trim();
+  if (!raw) return NaN;
+  if (oddsFormat === 'decimal') return parseFloat(raw);
+  if (oddsFormat === 'american') return americanToDecimal(parseInt(raw)) || NaN;
+  if (oddsFormat === 'fractional') return fractionalToDecimal(raw) || NaN;
+  return NaN;
+}
+function onOddsFormatChange(fmt) {
+  const oldVal = document.getElementById('p-odds').value.trim();
+  const input = document.getElementById('p-odds');
+  // Convert existing value to new format
+  let dec = null;
+  if (oldVal) {
+    if (oddsFormat === 'decimal') dec = parseFloat(oldVal);
+    else if (oddsFormat === 'american') dec = americanToDecimal(parseInt(oldVal));
+    else if (oddsFormat === 'fractional') dec = fractionalToDecimal(oldVal);
+  }
+  oddsFormat = fmt;
+  if (fmt === 'american') {
+    input.placeholder = '-110';
+    input.type = 'text';
+    if (dec) input.value = fmtAmerican(decimalToAmerican(dec));
+  } else if (fmt === 'decimal') {
+    input.placeholder = '1.91';
+    input.type = 'number';
+    input.min = '1.01'; input.step = '0.01';
+    if (dec) input.value = dec.toFixed(2);
+  } else if (fmt === 'fractional') {
+    input.placeholder = '10/11';
+    input.type = 'text';
+    if (dec) input.value = decimalToFractional(dec);
+  }
+}
+
 function initSelects() {
   cselInit('p-sport', SPORT_OPTIONS, '— select sport —', (v) => onSportChange('p-sport','p-team','p-pi'));
   cselInit('p-team', [], '— select team —', (v) => onTeamChange('p-sport','p-team','p-pi','p-ac'), true);
   cselInit('p-result', RESULT_OPTIONS, '— result —');
   cselSetValue('p-result', 'pending');
+  cselInit('odds-fmt', ODDS_FMT_OPTIONS, '— format —', (v) => onOddsFormatChange(v));
+  cselSetValue('odds-fmt', 'american');
 }
 
 function populateTeamSelect(sport, teamSelId) {
@@ -961,6 +1038,10 @@ function populateTeamSelect(sport, teamSelId) {
 function onSportChange(sid, tid, piid) {
   const sport = document.getElementById(sid).value;
   hideProps();
+  // Show Team/Player on mobile after sport selection
+  document.querySelectorAll('.mobile-after-sport').forEach(el => {
+    if (sport) el.classList.add('show'); else el.classList.remove('show');
+  });
   if (WIP_SPORTS.includes(sport)) {
     cselSetOptions(tid, [], '— coming soon —');
     cselSetDisabled(tid, true);
@@ -1190,14 +1271,14 @@ function addProp(){
   // Use selected prop line if picked, otherwise manual input
   const line = selectedPropLine ? selectedPropLine.line : document.getElementById('p-line-manual').value.trim();
   const stake=parseFloat(document.getElementById('p-stake').value);
-  const odds=parseFloat(document.getElementById('p-odds').value);
+  const odds=getDecimalOdds();
   const result=document.getElementById('p-result').value;
   const date=document.getElementById('p-date').value||today();
   if(!sport){alert('Select a sport.');return;}if(!teamId){alert('Select a team.');return;}
   if(!player){alert('Enter a player name.');return;}
   if(!line){alert('Select a prop line above, or enter a stat line manually in the field below.');return;}
   if(!stake||stake<=0){alert('Enter a valid stake.');return;}
-  if(!odds||odds<1.01){alert('Decimal odds must be ≥ 1.01');return;}
+  if(isNaN(odds)||odds<1.01){alert('Enter valid odds.');return;}
   bets.unshift({id:Date.now(),kind:'prop',sport,team,player,line,stake,odds,result,date});
   save();render();
   if (result === 'pending') gradeFromPostGame();
