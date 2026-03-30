@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Veritas v0.15</title>
+<title>Veritas v0.16</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -169,6 +170,36 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
 .settings-item-label{display:block;font-size:13px;font-weight:500;color:var(--text)}
 .settings-item.danger .settings-item-label{color:var(--red)}
 .settings-item-desc{display:block;font-size:10px;color:var(--muted);margin-top:2px}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-lg);width:520px;max-width:92vw;max-height:85vh;overflow-y:auto;box-shadow:0 16px 48px rgba(0,0,0,.5)}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)}
+.modal-header h3{font-size:15px;font-weight:500;color:var(--text)}
+.modal-body{padding:20px}
+.modal-tabs{display:flex;gap:4px;background:var(--surface2);border-radius:var(--radius);padding:3px;margin-bottom:16px;width:fit-content}
+.modal-tabs .tab{padding:6px 16px;border-radius:6px;border:none;background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer;transition:all .15s}
+.modal-tabs .tab.active{background:var(--surface3);color:var(--text);font-weight:500}
+.drop-zone{border:2px dashed var(--border2);border-radius:var(--radius-lg);padding:32px 20px;text-align:center;cursor:pointer;transition:all .2s;position:relative}
+.drop-zone:hover,.drop-zone.dragover{border-color:var(--accent);background:rgba(62,207,110,.04)}
+.drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.drop-zone-icon{font-size:28px;opacity:.3;margin-bottom:8px}
+.drop-zone-text{font-size:13px;color:var(--muted)}
+.drop-zone-hint{font-size:11px;color:var(--hint);margin-top:4px}
+.ocr-progress{margin-top:12px;display:none}
+.ocr-progress.active{display:block}
+.ocr-bar-wrap{height:4px;background:var(--surface2);border-radius:2px;overflow:hidden;margin-top:6px}
+.ocr-bar{height:100%;background:var(--accent);border-radius:2px;transition:width .3s;width:0%}
+.ocr-status{font-size:11px;color:var(--muted)}
+.paste-area{width:100%;min-height:120px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:10px;outline:none;resize:vertical}
+.paste-area::placeholder{color:var(--hint)}
+.parse-results{margin-top:14px}
+.parse-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:8px}
+.parse-card-row{display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:12px}
+.parse-card-row:last-child{margin-bottom:0}
+.parse-label{color:var(--muted);min-width:55px;font-size:11px}
+.parse-value{color:var(--text);font-weight:500}
+.parse-value input{background:var(--surface3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:12px;padding:4px 8px;width:100%;outline:none}
+.parse-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
 @media(max-width:900px){.stats-row{grid-template-columns:repeat(2,1fr)}.main{padding:1rem}}
 </style>
 </head>
@@ -179,7 +210,7 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
       <div class="logo">Veritas</div>
       <span style="font-size:11px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;font-weight:500">Profit Tracker</span>
     </div>
-    <div style="font-size:10px;color:var(--hint)">Built by Tyler — Made with Claude &nbsp;·&nbsp; v0.15</div>
+    <div style="font-size:10px;color:var(--hint)">Built by Tyler — Made with Claude &nbsp;·&nbsp; v0.16</div>
   </div>
   <div class="header-right">
     <div class="roster-status">
@@ -189,6 +220,10 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
     <div class="settings-wrap" style="position:relative">
       <button class="btn sm" onclick="toggleSettings()" id="settings-btn">⚙ Settings</button>
       <div class="settings-menu" id="settings-menu">
+        <div class="settings-item" onclick="toggleSettings();openImportModal()">
+          <span class="settings-item-label">Import bet slip</span>
+          <span class="settings-item-desc">Upload a screenshot or paste text from your sportsbook</span>
+        </div>
         <div class="settings-item" onclick="exportCSV();toggleSettings()">
           <span class="settings-item-label">Export CSV</span>
           <span class="settings-item-desc">Download all bets as a spreadsheet</span>
@@ -1477,6 +1512,274 @@ render();
 switchTab('prop');
 loadAllTeams();
 startLivePolling();
+
+// ── IMPORT BET SLIP ──────────────────────────────────────────────────────
+let importMode = 'screenshot';
+let parsedImport = null;
+
+function openImportModal() {
+  document.getElementById('import-modal').classList.add('open');
+  switchImportMode('screenshot');
+}
+function closeImportModal() {
+  document.getElementById('import-modal').classList.remove('open');
+  parsedImport = null;
+  document.getElementById('import-results').innerHTML = '';
+  document.getElementById('import-paste').value = '';
+  document.getElementById('ocr-progress').classList.remove('active');
+}
+function switchImportMode(mode) {
+  importMode = mode;
+  document.getElementById('import-screenshot-pane').style.display = mode === 'screenshot' ? '' : 'none';
+  document.getElementById('import-paste-pane').style.display = mode === 'paste' ? '' : 'none';
+  document.querySelectorAll('#import-tabs .tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
+  document.getElementById('import-results').innerHTML = '';
+}
+
+// Screenshot OCR
+function handleImportFile(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => runOCR(e.target.result);
+  reader.readAsDataURL(file);
+}
+
+function handleImportDrop(e) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('dragover');
+  const file = e.dataTransfer?.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => runOCR(ev.target.result);
+  reader.readAsDataURL(file);
+}
+
+async function runOCR(imageData) {
+  const prog = document.getElementById('ocr-progress');
+  const bar = document.getElementById('ocr-bar');
+  const status = document.getElementById('ocr-status');
+  prog.classList.add('active');
+  status.textContent = 'Initializing OCR…';
+  bar.style.width = '10%';
+
+  try {
+    const worker = await Tesseract.createWorker('eng', 1, {
+      logger: m => {
+        if (m.status === 'recognizing text') {
+          bar.style.width = Math.round(10 + m.progress * 80) + '%';
+          status.textContent = 'Reading text… ' + Math.round(m.progress * 100) + '%';
+        }
+      }
+    });
+    const { data: { text } } = await worker.recognize(imageData);
+    await worker.terminate();
+    bar.style.width = '100%';
+    status.textContent = 'Done — parsing results…';
+    console.log('[Import] OCR text:', text);
+    const results = parseBetSlipText(text);
+    renderImportResults(results, text);
+  } catch(e) {
+    status.textContent = 'OCR failed: ' + e.message;
+    console.error('[Import] OCR error:', e);
+  }
+}
+
+// Copy-paste parser
+function parseImportPaste() {
+  const text = document.getElementById('import-paste').value.trim();
+  if (!text) return;
+  console.log('[Import] paste text:', text);
+  const results = parseBetSlipText(text);
+  renderImportResults(results, text);
+}
+
+// Universal bet slip text parser — handles DraftKings, FanDuel, BetMGM, etc.
+function parseBetSlipText(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const betsFound = [];
+
+  // Patterns for player props
+  const propPattern = /(?:^|\s)([\w'.]+(?:\s[\w'.]+){1,3})\s+(over|under|o|u)\s*([\d.]+)\s*(points?|pts?|rebounds?|reb|assists?|ast|steals?|stl|blocks?|blk|threes?|3.?pointers?|3pm|turnovers?|to|pts\+reb\+ast|pra|pts\+reb|pts\+ast|reb\+ast)/i;
+  const oddsPattern = /([+-]\d{3,4})/;
+  const stakePattern = /(?:wager|stake|risk|bet)\s*[:$]?\s*\$?([\d,.]+)/i;
+  const stakePattern2 = /\$\s*([\d,.]+)/;
+
+  // Try to find a global stake
+  let globalStake = null;
+  for (const line of lines) {
+    const sm = line.match(stakePattern);
+    if (sm) { globalStake = parseFloat(sm[1].replace(',', '')); break; }
+  }
+
+  // Scan for prop lines
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const combined = line + ' ' + (lines[i+1] || '') + ' ' + (lines[i+2] || '');
+
+    const pm = combined.match(propPattern);
+    if (!pm) continue;
+
+    const player = pm[1].trim();
+    let side = pm[2].toLowerCase();
+    if (side === 'o') side = 'over';
+    if (side === 'u') side = 'under';
+    const target = pm[3];
+    let statRaw = pm[4].toLowerCase();
+
+    // Normalize stat name
+    const statMap = {
+      'points':'Points','point':'Points','pts':'Points','pt':'Points',
+      'rebounds':'Rebounds','rebound':'Rebounds','reb':'Rebounds',
+      'assists':'Assists','assist':'Assists','ast':'Assists',
+      'steals':'Steals','steal':'Steals','stl':'Steals',
+      'blocks':'Blocks','block':'Blocks','blk':'Blocks',
+      'threes':'3-Pointers','three':'3-Pointers','3-pointers':'3-Pointers','3-pointer':'3-Pointers','3pm':'3-Pointers','3 pointers':'3-Pointers',
+      'turnovers':'Turnovers','turnover':'Turnovers','to':'Turnovers',
+      'pts+reb+ast':'PTS+REB+AST','pra':'PTS+REB+AST',
+      'pts+reb':'PTS+REB','pts+ast':'PTS+AST','reb+ast':'REB+AST',
+    };
+    const statDisplay = statMap[statRaw] || statRaw;
+    const lineStr = `${side.charAt(0).toUpperCase()+side.slice(1)} ${target} ${statDisplay}`;
+
+    // Try to find odds nearby
+    let odds = null;
+    for (let j = Math.max(0, i-1); j <= Math.min(lines.length-1, i+2); j++) {
+      const om = lines[j].match(oddsPattern);
+      if (om) { odds = parseInt(om[1]); break; }
+    }
+
+    // Try to find stake nearby
+    let stake = globalStake;
+    if (!stake) {
+      for (let j = Math.max(0, i-1); j <= Math.min(lines.length-1, i+3); j++) {
+        const sm2 = lines[j].match(stakePattern2);
+        if (sm2) { stake = parseFloat(sm2[1].replace(',', '')); break; }
+      }
+    }
+
+    const decOdds = odds ? americanToDecimal(odds) : null;
+
+    betsFound.push({
+      player,
+      line: lineStr,
+      odds,
+      decimalOdds: decOdds,
+      stake: stake || null,
+      sport: 'NBA',
+    });
+  }
+
+  return betsFound;
+}
+
+function renderImportResults(results, rawText) {
+  const container = document.getElementById('import-results');
+  if (!results.length) {
+    container.innerHTML = `<div style="text-align:center;padding:16px;color:var(--muted)">
+      <div style="font-size:13px;margin-bottom:6px">Could not detect any prop bets</div>
+      <div style="font-size:11px;color:var(--hint)">Try pasting the text in a different format, or enter bets manually</div>
+      ${rawText ? '<details style="margin-top:10px;text-align:left"><summary style="font-size:11px;color:var(--hint);cursor:pointer">Raw text detected</summary><pre style="font-size:10px;color:var(--hint);white-space:pre-wrap;margin-top:6px;max-height:120px;overflow-y:auto">'+rawText.replace(/</g,'&lt;')+'</pre></details>' : ''}
+    </div>`;
+    return;
+  }
+
+  parsedImport = results;
+  let html = '';
+  results.forEach((r, i) => {
+    html += `<div class="parse-card" id="parse-card-${i}">
+      <div class="parse-card-row"><span class="parse-label">Player</span><span class="parse-value"><input id="imp-player-${i}" value="${r.player}"/></span></div>
+      <div class="parse-card-row"><span class="parse-label">Line</span><span class="parse-value"><input id="imp-line-${i}" value="${r.line}"/></span></div>
+      <div class="parse-card-row">
+        <span class="parse-label">Odds</span><span class="parse-value"><input id="imp-odds-${i}" value="${r.odds ? fmtAmerican(r.odds) + ' (' + (r.decimalOdds?.toFixed(2)||'') + ')' : ''}" placeholder="e.g. -110"/></span>
+        <span class="parse-label">Stake</span><span class="parse-value"><input id="imp-stake-${i}" value="${r.stake||''}" placeholder="$" type="number" style="width:80px"/></span>
+      </div>
+    </div>`;
+  });
+  html += `<div class="parse-actions">
+    <button class="btn" onclick="closeImportModal()">Cancel</button>
+    <button class="btn primary" onclick="confirmImport()">Add ${results.length} bet${results.length!==1?'s':''}</button>
+  </div>`;
+  container.innerHTML = html;
+}
+
+function confirmImport() {
+  if (!parsedImport?.length) return;
+  parsedImport.forEach((r, i) => {
+    const player = document.getElementById('imp-player-'+i)?.value.trim() || r.player;
+    const line = document.getElementById('imp-line-'+i)?.value.trim() || r.line;
+    const stakeVal = parseFloat(document.getElementById('imp-stake-'+i)?.value) || r.stake || 0;
+    // Parse odds from the field (might be edited)
+    let decOdds = r.decimalOdds || 2.0;
+    const oddsField = document.getElementById('imp-odds-'+i)?.value || '';
+    const amMatch = oddsField.match(/([+-]?\d{3,4})/);
+    if (amMatch) decOdds = americanToDecimal(parseInt(amMatch[1]));
+    const decMatch = oddsField.match(/([\d.]+)\s*\)?\s*$/);
+    if (decMatch && parseFloat(decMatch[1]) >= 1.01) decOdds = parseFloat(decMatch[1]);
+
+    if (!player || !line || !stakeVal || stakeVal <= 0 || !decOdds || decOdds < 1.01) return;
+
+    bets.unshift({
+      id: Date.now() + i,
+      kind: 'prop',
+      sport: 'NBA',
+      team: '',
+      player,
+      line,
+      stake: stakeVal,
+      odds: decOdds,
+      result: 'pending',
+      date: today(),
+    });
+  });
+  save();
+  render();
+  closeImportModal();
+}
 </script>
+
+<!-- IMPORT MODAL -->
+<div class="modal-overlay" id="import-modal" onclick="if(event.target===this)closeImportModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Import bet slip</h3>
+      <button class="btn ghost" onclick="closeImportModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-tabs" id="import-tabs">
+        <button class="tab active" data-mode="screenshot" onclick="switchImportMode('screenshot')">Screenshot</button>
+        <button class="tab" data-mode="paste" onclick="switchImportMode('paste')">Paste text</button>
+      </div>
+
+      <!-- Screenshot pane -->
+      <div id="import-screenshot-pane">
+        <div class="drop-zone" id="drop-zone"
+          ondragover="event.preventDefault();this.classList.add('dragover')"
+          ondragleave="this.classList.remove('dragover')"
+          ondrop="handleImportDrop(event)">
+          <input type="file" accept="image/*" onchange="handleImportFile(this)"/>
+          <div class="drop-zone-icon">&#128247;</div>
+          <div class="drop-zone-text">Drop a screenshot here or click to upload</div>
+          <div class="drop-zone-hint">Supports DraftKings, FanDuel, BetMGM, and most sportsbook formats</div>
+        </div>
+        <div class="ocr-progress" id="ocr-progress">
+          <span class="ocr-status" id="ocr-status">Initializing…</span>
+          <div class="ocr-bar-wrap"><div class="ocr-bar" id="ocr-bar"></div></div>
+        </div>
+      </div>
+
+      <!-- Paste pane -->
+      <div id="import-paste-pane" style="display:none">
+        <textarea class="paste-area" id="import-paste" placeholder="Paste your bet slip text here…&#10;&#10;Example:&#10;LeBron James Over 25.5 Points (-110)&#10;Stake: $25"></textarea>
+        <div style="display:flex;justify-content:flex-end;margin-top:8px">
+          <button class="btn primary" onclick="parseImportPaste()">Parse</button>
+        </div>
+      </div>
+
+      <div id="import-results"></div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
