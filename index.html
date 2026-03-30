@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Veritas v0.23</title>
+<title>Veritas v0.24</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
@@ -229,7 +229,7 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
       <div class="logo">Veritas</div>
       <span style="font-size:11px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;font-weight:500">Profit Tracker</span>
     </div>
-    <div style="font-size:10px;color:var(--hint);letter-spacing:0.04em">made by tyler &#x2E3A; v0.23</div>
+    <div style="font-size:10px;color:var(--hint);letter-spacing:0.04em">made by tyler &#x2E3A; v0.24</div>
   </div>
   <div class="header-right">
     <div class="roster-status">
@@ -1366,18 +1366,29 @@ async function pollLiveStats() {
     liveStatsCache = newCache;
     console.log(`[Live] updated ${Object.keys(newCache).length} player stats from ${games.length} game(s)`);
 
-    // Auto-grade pending bets where game is Final
+    // Auto-grade pending bets — "over" wins instantly when stat exceeds line,
+    // "under" and pushes wait until game is Final (stats only go up)
     let graded = false;
+    function liveGrade(side, target, current, isFinal, isLive) {
+      if (side === 'over') {
+        if (current > target) return 'win';          // locked in — stat can't decrease
+        if (isFinal) return current === target ? 'push' : 'loss';
+      } else if (side === 'under') {
+        if (isLive && current > target) return 'loss'; // already busted
+        if (isFinal) return current < target ? 'win' : current === target ? 'push' : 'loss';
+      }
+      return null; // not yet decidable
+    }
     bets.forEach(b => {
       if (b.result !== 'pending') return;
       if (b.kind === 'prop') {
         const parsed = parseBetLine(b.line);
         if (!parsed) return;
         const pStats = liveStatsCache[b.player?.toLowerCase()];
-        if (!pStats?.isFinal) return;
+        if (!pStats?.isLive && !pStats?.isFinal) return;
         const current = getStatValue(pStats, parsed.statKey);
-        b.result = gradeBet(parsed.side, parsed.target, current);
-        graded = true;
+        const result = liveGrade(parsed.side, parsed.target, current, pStats.isFinal, pStats.isLive);
+        if (result) { b.result = result; graded = true; }
       } else if (b.kind === 'parlay') {
         let anyChange = false;
         b.legs.forEach(leg => {
@@ -1385,10 +1396,10 @@ async function pollLiveStats() {
           const parsed = parseBetLine(leg.line);
           if (!parsed) return;
           const pStats = liveStatsCache[leg.player?.toLowerCase()];
-          if (!pStats?.isFinal) return;
+          if (!pStats?.isLive && !pStats?.isFinal) return;
           const current = getStatValue(pStats, parsed.statKey);
-          leg.result = gradeBet(parsed.side, parsed.target, current);
-          anyChange = true;
+          const result = liveGrade(parsed.side, parsed.target, current, pStats.isFinal, pStats.isLive);
+          if (result) { leg.result = result; anyChange = true; }
         });
         if (anyChange) {
           const lr = b.legs.map(l => l.result);
