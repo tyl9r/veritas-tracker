@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Veritas v0.37</title>
+<title>Veritas v0.38</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -389,10 +389,15 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
 <!-- PUBLIC PROFILE PAGE (shown for ?u=username) -->
 <div id="profile-page" style="display:none">
   <header style="margin-top:2px">
-    <div style="display:flex;align-items:baseline;gap:12px">
+    <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0">
       <div class="logo">Veritas</div>
-      <span style="font-size:11px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;font-weight:500">Profit Tracker</span>
+      <div style="font-size:10px;color:var(--muted);letter-spacing:0.04em;padding-left:2px">made by tyler</div>
     </div>
+    <nav class="header-nav">
+      <a class="nav-btn" href="." style="text-decoration:none">Home</a>
+      <button class="nav-btn active" disabled>Profile</button>
+    </nav>
+    <div style="width:60px"></div>
   </header>
   <div class="profile-page">
     <div class="profile-header">
@@ -446,7 +451,7 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
           <span class="settings-item-desc" id="user-email-display"></span>
         </div>
         <div class="settings-item" style="cursor:default;border-top:1px solid var(--border)">
-          <span class="settings-item-desc" style="text-align:center;width:100%;color:var(--muted);font-family:'DM Mono',monospace">v0.37</span>
+          <span class="settings-item-desc" style="text-align:center;width:100%;color:var(--muted);font-family:'DM Mono',monospace">v0.38</span>
         </div>
       </div>
     </div>
