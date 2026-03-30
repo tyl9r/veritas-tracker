@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Veritas v0.33</title>
+<title>Veritas v0.34</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -414,7 +414,7 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
           <span class="settings-item-desc" id="user-email-display"></span>
         </div>
         <div class="settings-item" style="cursor:default;border-top:1px solid var(--border)">
-          <span class="settings-item-desc" style="text-align:center;width:100%;color:var(--muted);font-family:'DM Mono',monospace">v0.33</span>
+          <span class="settings-item-desc" style="text-align:center;width:100%;color:var(--muted);font-family:'DM Mono',monospace">v0.34</span>
         </div>
       </div>
     </div>
@@ -1996,7 +1996,7 @@ async function handleSignUp() {
   const email = document.getElementById('su-email').value.trim();
   const pw = document.getElementById('su-password').value;
   const confirm = document.getElementById('su-confirm').value;
-  if (!username || username.length < 3) return showAuthError('Username must be at least 3 characters.');
+  if (!username) return showAuthError('Please choose a username.');
   if (!email) return showAuthError('Please enter your email.');
   if (pw.length < 6) return showAuthError('Password must be at least 6 characters.');
   if (pw !== confirm) return showAuthError('Passwords do not match.');
@@ -2088,7 +2088,7 @@ async function saveProfileSettings() {
   const username = document.getElementById('prof-username').value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
   const display_name = document.getElementById('prof-display').value.trim();
   const is_public = document.getElementById('prof-public').checked;
-  if (!username || username.length < 3) return alert('Username must be at least 3 characters.');
+  if (!username) return alert('Please enter a username.');
   const { error } = await sb.from('profiles').update({ username, display_name, is_public }).eq('id', currentUser.id);
   if (error) return alert('Error: ' + error.message);
   currentProfile = { ...currentProfile, username, display_name, is_public };
