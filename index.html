@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Veritas v0.35</title>
+<title>Veritas v0.36</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -316,6 +316,10 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
 .early-badge::before{content:'★';font-size:12px}
 @keyframes badge-glow{0%,100%{box-shadow:0 0 6px rgba(255,215,0,.15)}50%{box-shadow:0 0 14px rgba(255,215,0,.3)}}
 .early-badge{animation:badge-glow 3s ease-in-out infinite}
+.admin-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:99px;font-size:11px;font-weight:600;background:linear-gradient(135deg,rgba(232,69,69,0.12),rgba(200,40,40,0.08));border:1px solid rgba(232,69,69,0.3);color:var(--red);letter-spacing:.03em;margin-top:6px}
+.admin-badge::before{content:'⚡';font-size:11px}
+@keyframes admin-glow{0%,100%{box-shadow:0 0 6px rgba(232,69,69,.15)}50%{box-shadow:0 0 14px rgba(232,69,69,.35)}}
+.admin-badge{animation:admin-glow 3s ease-in-out infinite}
 .search-item{padding:10px 14px;cursor:pointer;transition:background .1s;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
 .search-item:last-child{border-bottom:none}
 .search-item:hover{background:var(--surface3)}
@@ -431,7 +435,7 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
           <span class="settings-item-desc" id="user-email-display"></span>
         </div>
         <div class="settings-item" style="cursor:default;border-top:1px solid var(--border)">
-          <span class="settings-item-desc" style="text-align:center;width:100%;color:var(--muted);font-family:'DM Mono',monospace">v0.35</span>
+          <span class="settings-item-desc" style="text-align:center;width:100%;color:var(--muted);font-family:'DM Mono',monospace">v0.36</span>
         </div>
       </div>
     </div>
@@ -2217,7 +2221,8 @@ async function searchProfiles(query) {
       const avatar = p.avatar_url
         ? `<div class="search-avatar"><img src="${p.avatar_url}"/></div>`
         : `<div class="search-avatar">${(p.display_name || p.username || '?')[0].toUpperCase()}</div>`;
-      const badge = p.member_number <= 50 ? ' <span style="color:#ffd700;font-size:10px">★</span>' : '';
+      const isAdmin = p.username === 'tyler' || p.username === 't';
+      const badge = (isAdmin ? ' <span style="color:var(--red);font-size:10px">⚡</span>' : '') + (p.member_number <= 50 ? ' <span style="color:#ffd700;font-size:10px">★</span>' : '');
       return `<div class="search-item" onclick="window.open('${window.location.pathname}?u=${p.username}','_blank')">
         ${avatar}
         <div><div class="search-name">${p.display_name || p.username}${badge}</div><div class="search-user">@${p.username}</div></div>
@@ -2266,11 +2271,12 @@ async function checkPublicProfile() {
   const bioEl = document.getElementById('prof-page-bio');
   bioEl.textContent = profile.bio || '';
   bioEl.style.display = profile.bio ? '' : 'none';
-  // Early member badge
+  // Badges
   const badgeArea = document.getElementById('prof-badge-area');
-  if (profile.member_number && profile.member_number <= 50) {
-    badgeArea.innerHTML = `<div class="early-badge">Early Member #${profile.member_number}</div>`;
-  }
+  let badges = '';
+  if (profile.username === 'tyler' || profile.username === 't') badges += `<div class="admin-badge">Administrator</div>`;
+  if (profile.member_number && profile.member_number <= 50) badges += `<div class="early-badge">Early Member #${profile.member_number}</div>`;
+  badgeArea.innerHTML = badges;
 
   // Fetch stats
   const { data: statsData } = await sb.rpc('public_profile_stats', { p_username: u });
