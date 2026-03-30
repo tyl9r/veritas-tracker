@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Veritas v0.16</title>
+<title>Veritas v0.17</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
@@ -210,7 +210,7 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
       <div class="logo">Veritas</div>
       <span style="font-size:11px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;font-weight:500">Profit Tracker</span>
     </div>
-    <div style="font-size:10px;color:var(--hint)">Built by Tyler — Made with Claude &nbsp;·&nbsp; v0.16</div>
+    <div style="font-size:10px;color:var(--hint)">Built by Tyler — Made with Claude &nbsp;·&nbsp; v0.17</div>
   </div>
   <div class="header-right">
     <div class="roster-status">
@@ -247,8 +247,8 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
   <div class="section">
     <div class="section-label" style="margin-bottom:10px">Add a bet</div>
     <div class="tabs">
-      <button class="tab active" id="tab-btn-prop" onclick="switchTab('prop')">Single prop</button>
-      <button class="tab" id="tab-btn-parlay" onclick="switchTab('parlay')">Prop parlay</button>
+      <button class="tab active" id="tab-btn-prop" onclick="switchTab('prop')">Straight Bet</button>
+      <button class="tab" id="tab-btn-parlay" onclick="switchTab('parlay')">Parlay</button>
     </div>
     <div class="form-box">
 
@@ -1144,7 +1144,7 @@ function addParlay(){
   else if(!lr.some(r=>r==='pending')&&lr.some(r=>r==='win'))result='partial';
   const sc={};legs.forEach(l=>{if(l.sport)sc[l.sport]=(sc[l.sport]||0)+1;});
   const ps=Object.keys(sc).sort((a,b)=>sc[b]-sc[a])[0]||'';
-  bets.unshift({id:Date.now(),kind:'parlay',sport:ps,name:name||('Prop parlay – '+date),stake,odds,result,date,legs});
+  bets.unshift({id:Date.now(),kind:'parlay',sport:ps,name:name||('Parlay – '+date),stake,odds,result,date,legs});
   save();render();
   document.getElementById('pl-name').value='';document.getElementById('pl-stake').value='';document.getElementById('pl-odds').value='';
   document.getElementById('legs-container').innerHTML='';legIdCounter=0;addLeg();addLeg();
@@ -1460,7 +1460,8 @@ function render(){
   const ss=[...settled].sort((a,b)=>a.date.localeCompare(b.date)||a.id-b.id);let cum=0;
   setTimeout(()=>drawChart([0,...ss.map(b=>{cum+=pl(b);return cum;})]),50);
   const us=new Set();bets.forEach(b=>{if(b.sport)us.add(b.sport);if(b.legs)b.legs.forEach(l=>{if(l.sport)us.add(l.sport);});});
-  document.getElementById('filters').innerHTML=['all','prop','parlay',...Array.from(us)].map(f=>`<button class="filter-chip ${activeFilter===f?'active':''}" onclick="setFilter('${f.replace(/'/g,"\\'")}')"> ${f==='all'?'All bets':f}</button>`).join('');
+  const filterLabels={all:'All bets',prop:'Straight Bets',parlay:'Parlays'};
+  document.getElementById('filters').innerHTML=['all','prop','parlay',...Array.from(us)].map(f=>`<button class="filter-chip ${activeFilter===f?'active':''}" onclick="setFilter('${f.replace(/'/g,"\\'")}')"> ${filterLabels[f]||f}</button>`).join('');
   let visible=bets;
   if(activeFilter==='prop')visible=bets.filter(b=>b.kind==='prop');
   else if(activeFilter==='parlay')visible=bets.filter(b=>b.kind==='parlay');
@@ -1481,7 +1482,7 @@ function render(){
       pill=`<span class="type-pill standard">standard</span>`;
     }else if(b.kind==='prop'){
       desc=`${stag}<strong style="font-weight:500">${b.player}</strong> <span style="color:var(--muted);font-size:12px">${b.line} · ${b.team||''}</span>`;
-      pill=`<span class="type-pill prop">prop</span>`;
+      pill=`<span class="type-pill prop">straight</span>`;
     }else{      const lw=b.legs.filter(l=>l.result==='win').length;
       desc=`${stag}<strong style="font-weight:500">${b.name}</strong> <span style="color:var(--muted);font-size:12px">${b.legs.length} legs${b.result!=='pending'?' · '+lw+'/'+b.legs.length+' hit':''}</span><span class="earrow ${isOpen?'open':''}">▶</span>`;
       pill=`<span class="type-pill parlay">parlay</span>`;
