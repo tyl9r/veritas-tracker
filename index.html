@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Veritas v0.11</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0d0f;--surface:#161618;--surface2:#1e1e21;--surface3:#242428;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+  --text:#f0efe8;--muted:#7a7a80;--hint:#444448;
+  --green:#3ecf6e;--green-bg:rgba(62,207,110,0.1);
+  --red:#f05252;--red-bg:rgba(240,82,82,0.1);
+  --amber:#f0a030;--amber-bg:rgba(240,160,48,0.1);
+  --blue:#4fa3e0;--blue-bg:rgba(79,163,224,0.1);
+  --accent:#3ecf6e;--radius:8px;--radius-lg:12px
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+header{border-bottom:1px solid var(--border);padding:1.1rem 2rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--bg);z-index:100}
+.logo{font-family:'DM Mono',monospace;font-size:22px;font-weight:500;letter-spacing:-0.03em;color:var(--text)}
+.header-right{display:flex;align-items:center;gap:14px}
+.roster-status{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--muted)}
+.rdot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .3s}
+.rdot.live{background:var(--green);box-shadow:0 0 6px rgba(62,207,110,.45)}
+.rdot.fallback{background:var(--amber)}
+.rdot.loading{background:var(--blue);animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.header-actions{display:flex;gap:8px}
+.main{max-width:1160px;margin:0 auto;padding:2rem}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.75rem}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem 1.25rem;position:relative;overflow:hidden}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--ac,var(--border2));border-radius:2px 2px 0 0}
+.stat-card.green{--ac:var(--green)}.stat-card.red{--ac:var(--red)}.stat-card.blue{--ac:var(--blue)}.stat-card.amber{--ac:var(--amber)}
+.stat-label{font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.stat-value{font-family:'DM Mono',monospace;font-size:24px;font-weight:500;line-height:1}
+.stat-value.pos{color:var(--green)}.stat-value.neg{color:var(--red)}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:5px}
+.chart-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:1.75rem}
+#pl-chart{width:100%;height:130px;display:block}
+.section{margin-bottom:1.75rem}
+.section-label{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.tabs{display:flex;gap:4px;background:var(--surface2);border-radius:var(--radius);padding:3px;margin-bottom:1rem;width:fit-content}
+.tab{padding:6px 18px;border-radius:6px;border:none;background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;transition:all .15s}
+.tab.active{background:var(--surface3);color:var(--text);font-weight:500}
+.form-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem}
+.form-row{display:grid;gap:10px;align-items:end}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:11px;color:var(--muted);font-weight:500;letter-spacing:.04em}
+input,select{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;padding:8px 10px;outline:none;transition:border-color .15s;width:100%}
+input:focus,select:focus{border-color:var(--border2)}
+input::placeholder{color:var(--hint)}
+select option{background:#1e1e21}
+select:disabled{opacity:.4;cursor:not-allowed}
+.player-wrap{position:relative}
+.ac-list{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surface3);border:1px solid var(--border2);border-radius:var(--radius);z-index:300;max-height:200px;overflow-y:auto;display:none}
+.ac-list.open{display:block}
+.ac-list div{padding:8px 12px;font-size:13px;cursor:pointer;color:var(--text);display:flex;align-items:center;justify-content:space-between}
+.ac-list div:hover,.ac-list div.aci{background:var(--surface2);color:var(--accent)}
+.pos-tag{font-size:10px;color:var(--muted);background:rgba(255,255,255,.06);padding:2px 5px;border-radius:3px;flex-shrink:0;margin-left:8px}
+.ac-loading{padding:10px 12px;font-size:12px;color:var(--muted);text-align:center}
+.btn{padding:8px 16px;border-radius:var(--radius);border:1px solid var(--border2);background:transparent;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:background .15s;white-space:nowrap}
+.btn:hover{background:var(--surface2)}
+.btn.primary{background:var(--accent);color:#0d0d0f;border-color:var(--accent)}
+.btn.primary:hover{opacity:.85}
+.btn.danger{color:var(--red);border-color:transparent;background:transparent;padding:4px 8px;font-size:14px}
+.btn.danger:hover{background:var(--red-bg)}
+.btn.sm{font-size:12px;padding:5px 12px}
+.btn.add-leg{border-style:dashed;color:var(--muted);font-size:12px;padding:7px 12px;width:100%;margin-top:6px}
+.btn.add-leg:hover{color:var(--text);border-color:var(--border2)}
+.legs-area{margin-top:14px}
+.legs-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.legs-label{font-size:11px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.06em}
+.leg-row{display:grid;grid-template-columns:22px .8fr .8fr 1fr 1.4fr .85fr 34px;gap:8px;align-items:start;margin-bottom:6px;padding:10px;background:var(--surface2);border-radius:var(--radius);border:1px solid var(--border)}
+.leg-props{margin:6px 0 0 0;padding:8px;background:var(--surface3);border-radius:var(--radius);border:1px solid var(--border);display:none}
+.leg-props.open{display:block}
+.leg-row input,.leg-row select{background:var(--surface3);font-size:12px;padding:6px 8px}
+.leg-row .player-wrap input{background:var(--surface3);font-size:12px;padding:6px 8px}
+.leg-num{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);text-align:center;padding-top:8px}
+.filters{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.filter-chip{padding:4px 12px;border-radius:99px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .15s}
+.filter-chip:hover{border-color:var(--border2);color:var(--text)}
+.filter-chip.active{border-color:var(--accent);color:var(--accent);background:rgba(62,207,110,.08)}
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:740px}
+thead th{padding:10px 14px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);white-space:nowrap}
+tbody tr.bet-row{border-bottom:1px solid var(--border);transition:background .1s}
+tbody tr.bet-row:last-child{border-bottom:none}
+tbody tr.bet-row:hover{background:var(--surface2)}
+tbody tr.bet-row.expandable{cursor:pointer}
+tbody tr.legs-detail td{padding:0}
+.legs-inner{border-bottom:1px solid var(--border)}
+.legs-inner table{min-width:unset}
+.legs-inner thead th{background:var(--surface3);font-size:10px;padding:6px 14px 6px 32px}
+.legs-inner tbody tr{border-bottom:1px solid var(--border)}
+.legs-inner tbody tr:last-child{border-bottom:none}
+.legs-inner td{padding:8px 14px 8px 32px;font-size:12px;color:var(--muted)}
+.legs-inner td.pcell{color:var(--text);font-weight:500}
+td{padding:10px 14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+td.mono{font-family:'DM Mono',monospace;font-size:12px}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:500}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
+.badge.win{background:var(--green-bg);color:var(--green)}.badge.loss{background:var(--red-bg);color:var(--red)}
+.badge.push{background:var(--amber-bg);color:var(--amber)}.badge.pending{background:rgba(255,255,255,.05);color:var(--muted)}
+.badge.partial{background:var(--amber-bg);color:var(--amber)}
+.badge[onclick]:hover{opacity:.75;transform:scale(1.05);transition:all .15s}
+.type-pill{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px}
+.type-pill.standard{background:var(--blue-bg);color:var(--blue)}.type-pill.prop{background:var(--amber-bg);color:var(--amber)}
+.type-pill.parlay{background:rgba(160,100,240,.12);color:#c084fc}
+.sport-tag{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:500;background:var(--surface3);color:var(--muted);margin-right:4px}
+.pl-pos{color:var(--green);font-family:'DM Mono',monospace;font-size:12px}
+.pl-neg{color:var(--red);font-family:'DM Mono',monospace;font-size:12px}
+.pl-neu{color:var(--muted);font-family:'DM Mono',monospace;font-size:12px}
+.earrow{font-size:9px;color:var(--muted);margin-left:6px;transition:transform .18s;display:inline-block;vertical-align:middle}
+.earrow.open{transform:rotate(90deg)}
+.empty-state{text-align:center;padding:3.5rem 2rem;color:var(--muted)}
+.prop-group{margin-bottom:12px}
+.prop-group-label{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px}
+.prop-lines{display:flex;flex-wrap:wrap;gap:6px}
+.prop-btn{display:flex;flex-direction:column;align-items:center;padding:6px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);cursor:pointer;transition:all .15s;min-width:80px;gap:2px}
+.prop-btn:hover{border-color:var(--border2);background:var(--surface3)}
+.prop-btn.selected-over{border-color:var(--green);background:var(--green-bg)}
+.prop-btn.selected-under{border-color:var(--red);background:var(--red-bg)}
+.prop-btn .line{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:var(--text)}
+.prop-btn .ou-row{display:flex;gap:6px;margin-top:3px}
+.prop-btn .ou{font-size:10px;padding:2px 6px;border-radius:3px;cursor:pointer;font-weight:500}
+.prop-btn .ou.over{background:rgba(62,207,110,.15);color:var(--green)}
+.prop-btn .ou.under{background:rgba(240,82,82,.15);color:var(--red)}
+.prop-btn .ou:hover{opacity:.8}
+.prop-btn .odds-row{display:flex;gap:4px;font-size:10px;color:var(--muted)}
+.props-loading{font-size:12px;color:var(--muted);padding:8px 0}
+.btn.ghost{border-color:transparent;color:var(--muted);font-size:12px;padding:4px 10px}
+.btn.ghost:hover{color:var(--text);background:var(--surface2)}
+.live-meter{margin-top:7px;padding:7px 10px;background:var(--surface3);border-radius:6px;border:1px solid var(--border)}
+.live-meter-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;font-size:11px}
+.live-meter-player{font-weight:500;color:var(--text)}
+.live-meter-clock{color:var(--muted);font-family:'DM Mono',monospace;font-size:10px}
+.live-meter-bar-wrap{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;position:relative}
+.live-meter-bar{height:100%;border-radius:3px;transition:width .5s ease;min-width:3px}
+.live-meter-bar.on-track{background:var(--green)}
+.live-meter-bar.danger{background:var(--red)}
+.live-meter-bar.hit{background:var(--green)}
+.live-meter-footer{display:flex;align-items:center;justify-content:space-between;margin-top:4px;font-size:10px;font-family:'DM Mono',monospace}
+.live-meter-stat{color:var(--text);font-weight:500}
+.live-meter-target{color:var(--muted)}
+.live-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:4px;animation:blink 1s infinite;vertical-align:middle}
+@media(max-width:900px){.stats-row{grid-template-columns:repeat(2,1fr)}.main{padding:1rem}}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;flex-direction:column;gap:2px">
+    <div style="display:flex;align-items:baseline;gap:12px">
+      <div class="logo">Veritas</div>
+      <span style="font-size:11px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;font-weight:500">Profit Tracker</span>
+    </div>
+    <div style="font-size:10px;color:var(--hint)">Built by Tyler — Made with Claude &nbsp;·&nbsp; v0.11</div>
+  </div>
+  <div class="header-right">
+    <div class="roster-status">
+      <div class="rdot loading" id="rdot"></div>
+      <span id="rtext">Loading rosters…</span>
+    </div>
+    <div class="header-actions">
+      <button class="btn sm" onclick="exportCSV()">Export CSV</button>
+      <button class="btn sm" onclick="clearAll()">Clear all</button>
+    </div>
+  </div>
+</header>
+
+<div class="main">
+  <div class="stats-row" id="stats-row"></div>
+  <div class="chart-wrap">
+    <div class="section-label" style="margin-bottom:10px">Cumulative profit / loss</div>
+    <canvas id="pl-chart"></canvas>
+  </div>
+
+  <div class="section">
+    <div class="section-label" style="margin-bottom:10px">Add a bet</div>
+    <div class="tabs">
+      <button class="tab active" id="tab-btn-prop" onclick="switchTab('prop')">Single prop</button>
+      <button class="tab" id="tab-btn-parlay" onclick="switchTab('parlay')">Prop parlay</button>
+    </div>
+    <div class="form-box">
+
+      <!-- SINGLE PROP -->
+      <div id="pane-prop">
+        <div class="form-row" style="grid-template-columns:1fr 1fr 1fr 1fr">
+          <div class="field"><label>Sport</label>
+            <select id="p-sport" onchange="onSportChange('p-sport','p-team','p-pi')"><option value="">— select sport —</option></select>
+          </div>
+          <div class="field"><label>Team</label>
+            <select id="p-team" disabled onchange="onTeamChange('p-sport','p-team','p-pi','p-ac')"><option value="">— select team —</option></select>
+          </div>
+          <div class="field"><label>Player</label>
+            <div class="player-wrap">
+              <input id="p-pi" placeholder="Search or type…" autocomplete="off"
+                oninput="onPI(this,'p-sport','p-team','p-ac')"
+                onfocus="onPI(this,'p-sport','p-team','p-ac')"
+                onkeydown="onPK(event,'p-ac','p-pi')"
+                onchange="onPlayerSelected()"/>
+              <div class="ac-list" id="p-ac"></div>
+            </div>
+          </div>
+          <div class="field"><label>Date</label><input type="date" id="p-date"/></div>
+        </div>
+
+        <!-- PROPS PANEL -->
+        <div id="props-panel" style="display:none;margin-top:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <span class="section-label">Live props</span>
+            <span id="props-source" style="font-size:11px;color:var(--muted)"></span>
+          </div>
+          <div id="props-list"></div>
+        </div>
+
+        <!-- SELECTED PROP DISPLAY -->
+        <div id="selected-prop-row" style="display:none;margin-top:10px;padding:10px 12px;background:var(--surface2);border-radius:var(--radius);border:1px solid var(--border2)">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span id="selected-prop-label" style="font-size:13px;font-weight:500;color:var(--accent)"></span>
+            <button class="btn ghost" onclick="clearSelectedProp()" style="font-size:11px;padding:3px 8px">✕ clear</button>
+          </div>
+        </div>
+
+        <!-- MANUAL STAT LINE (shown when no props or as fallback) -->
+        <div id="manual-line-row" style="display:none;margin-top:10px">
+          <div class="field"><label>Stat line (manual)</label>
+            <input id="p-line-manual" placeholder="e.g. Over 25.5 pts"/>
+          </div>
+        </div>
+
+        <div class="form-row" style="grid-template-columns:1fr 1fr 1fr auto;margin-top:10px">
+          <div class="field"><label>Stake ($)</label><input type="number" id="p-stake" placeholder="25" min="0.01" step="0.01"/></div>
+          <div class="field"><label>Decimal odds</label><input type="number" id="p-odds" placeholder="Auto-filled or enter manually" min="1.01" step="0.01"/></div>
+          <div class="field"><label>Result</label>
+            <select id="p-result"><option value="pending">Pending</option><option value="win">Win</option><option value="loss">Loss</option><option value="push">Push</option></select>
+          </div>
+          <button class="btn primary" onclick="addProp()" style="height:36px;align-self:end">+ Add prop</button>
+        </div>
+      </div>
+
+      <!-- PROP PARLAY -->
+      <div id="pane-parlay" style="display:none">
+        <div class="form-row" style="grid-template-columns:1.5fr 1fr 1fr 1fr">
+          <div class="field"><label>Slip name (optional)</label><input id="pl-name" placeholder="e.g. Sunday NBA props"/></div>
+          <div class="field"><label>Stake ($)</label><input type="number" id="pl-stake" placeholder="25" min="0.01" step="0.01"/></div>
+          <div class="field"><label>Combined decimal odds</label><input type="number" id="pl-odds" placeholder="5.40" min="1.01" step="0.01"/></div>
+          <div class="field"><label>Date</label><input type="date" id="pl-date"/></div>
+        </div>
+        <div class="legs-area">
+          <div class="legs-header">
+            <span class="legs-label">Legs</span>
+            <span id="leg-count-label" style="font-size:11px;color:var(--muted)"></span>
+          </div>
+          <div id="legs-container"></div>
+          <button class="btn add-leg" onclick="addLeg()">+ Add leg</button>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:14px">
+          <button class="btn primary" onclick="addParlay()">+ Save parlay</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="section">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div class="filters" id="filters"></div>
+      <span id="bet-count" style="font-size:12px;color:var(--muted)"></span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th style="width:88px">Date</th><th>Description</th><th style="width:84px">Type</th>
+          <th style="width:68px">Stake</th><th style="width:68px">Odds</th>
+          <th style="width:76px">To win</th><th style="width:80px">P / L</th>
+          <th style="width:88px">Result</th><th style="width:36px"></th>
+        </tr></thead>
+        <tbody id="bet-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── API CONFIG ─────────────────────────────────────────────────────────────
+const API_KEY = '97a56568-8807-4f08-ad68-8a40f9d0187e';
+const HEADERS  = { 'Authorization': API_KEY };
+const BASE     = 'https://api.balldontlie.io';
+
+// NBA config (other sports coming soon)
+const SPORT_CFG = {
+  NBA: { teamName: t => t.full_name },
+};
+
+const SPORT_KEYS = ['NBA','NFL','NHL','MLB','UFC/MMA'];
+const WIP_SPORTS = ['NFL','NHL','MLB','UFC/MMA'];
+const UFC_ORGS   = ['UFC','Bellator','ONE Championship','PFL','RIZIN'];
+
+// In-memory cache: { NBA: { teamId: [{name, pos}] }, ... }
+// Teams: { NBA: [{id, name}], ... }
+const teamCache   = {};
+const rosterCache = {};
+const playerIdMap = {}; // "LeBron James" -> balldontlie player id
+
+function setStatus(state, msg) {
+  document.getElementById('rdot').className = 'rdot ' + state;
+  document.getElementById('rtext').textContent = msg;
+}
+
+// ── LOAD ALL NBA DATA ON STARTUP ──────────────────────────────────────────
+// Fetches all active NBA players paginated, groups by team — one-time load,
+// no per-team requests so we never hit the 429 rate limit.
+async function loadAllTeams() {
+  setStatus('loading', 'Loading NBA rosters…');
+  try {
+    // All-Star tier = 60 req/min, fetch all pages instantly
+    let allPlayers = [];
+    let cursor = null;
+    let page = 0;
+    do {
+      setStatus('loading', `Loading NBA rosters… (page ${page + 1})`);
+      const url = `${BASE}/nba/v1/players/active?per_page=100${cursor ? '&cursor='+cursor : ''}`;
+      const res = await fetch(url, { headers: HEADERS });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      allPlayers = allPlayers.concat(json.data || []);
+      cursor = json.meta?.next_cursor || null;
+      page++;
+    } while (cursor && page < 15);
+
+    console.log(`[NBA] loaded ${allPlayers.length} players total`);
+
+    // Step 2: build team list and roster cache from player data
+    const teamMap = {}; // id -> {id, name}
+    const rosterMap = {}; // id -> [{name, pos}]
+
+    allPlayers.forEach(p => {
+      const team = p.team;
+      if (!team || !team.id || !team.full_name) return; // skip players with no active team
+      const tid = team.id;
+      if (!teamMap[tid]) {
+        teamMap[tid] = { id: tid, name: team.full_name };
+        rosterMap[tid] = [];
+      }
+      const name = `${p.first_name} ${p.last_name}`;
+      rosterMap[tid].push({ name, pos: p.position || '' });
+      playerIdMap[name] = p.id; // store for props lookup
+    });
+
+    // Only keep real 30 NBA teams (filter out historical/G-League entries)
+    const NBA_TEAMS = [
+      "Atlanta Hawks","Boston Celtics","Brooklyn Nets","Charlotte Hornets",
+      "Chicago Bulls","Cleveland Cavaliers","Dallas Mavericks","Denver Nuggets",
+      "Detroit Pistons","Golden State Warriors","Houston Rockets","Indiana Pacers",
+      "Los Angeles Clippers","Los Angeles Lakers","Memphis Grizzlies","Miami Heat",
+      "Milwaukee Bucks","Minnesota Timberwolves","New Orleans Pelicans","New York Knicks",
+      "Oklahoma City Thunder","Orlando Magic","Philadelphia 76ers","Phoenix Suns",
+      "Portland Trail Blazers","Sacramento Kings","San Antonio Spurs","Toronto Raptors",
+      "Utah Jazz","Washington Wizards"
+    ];
+
+    teamCache['NBA'] = Object.values(teamMap)
+      .filter(t => NBA_TEAMS.includes(t.name))
+      .sort((a,b) => a.name.localeCompare(b.name));
+
+    // Populate rosterCache for each valid team
+    teamCache['NBA'].forEach(t => {
+      const players = (rosterMap[t.id] || []).sort((a,b) => a.name.localeCompare(b.name));
+      rosterCache[`NBA_${t.id}`] = players;
+    });
+
+    console.log(`[NBA] ${teamCache['NBA'].length} teams, rosters cached`);
+    setStatus('live', `Live NBA rosters via balldontlie`);
+    rebuildSportSelects();
+  } catch(e) {
+    console.error('[NBA] load error:', e.message);
+    setStatus('fallback', 'Could not load — check connection');
+  }
+  WIP_SPORTS.forEach(s => { teamCache[s] = []; });
+}
+
+// Roster lookup — everything is pre-cached, no more API calls per team
+function loadRoster(sport, teamId) {
+  if (WIP_SPORTS.includes(sport)) return Promise.resolve([]);
+  const key = `${sport}_${teamId}`;
+  return Promise.resolve(rosterCache[key] || []);
+}
+
+// ── PROPS SYSTEM — The Odds API ───────────────────────────────────────────
+const ODDS_API_KEY = 'abde907ac2af231c3710a2d40e2c7393';
+const ODDS_BASE    = 'https://api.the-odds-api.com/v4';
+
+// NBA prop market keys and display labels
+const PROP_MARKETS = [
+  'player_points','player_rebounds','player_assists',
+  'player_threes','player_blocks','player_steals','player_turnovers',
+  'player_points_rebounds_assists','player_points_rebounds',
+  'player_points_assists','player_rebounds_assists',
+];
+const PROP_LABELS = {
+  player_points: 'Points', player_rebounds: 'Rebounds', player_assists: 'Assists',
+  player_threes: '3-Pointers', player_blocks: 'Blocks', player_steals: 'Steals',
+  player_turnovers: 'Turnovers', player_points_rebounds_assists: 'PTS+REB+AST',
+  player_points_rebounds: 'PTS+REB', player_points_assists: 'PTS+AST',
+  player_rebounds_assists: 'REB+AST',
+};
+
+// Cache: eventId -> props data (avoid re-fetching same game)
+const propsCache = {};
+// Cache: today's NBA event list
+let todayEvents = null;
+let selectedPropLine = null;
+
+function americanToDecimal(n) {
+  if (!n) return null;
+  n = parseInt(n);
+  return n > 0 ? (n/100)+1 : (100/Math.abs(n))+1;
+}
+function fmtAmerican(n) {
+  if (!n && n !== 0) return '—';
+  return n > 0 ? `+${n}` : `${n}`;
+}
+
+// Load today's NBA event IDs once (cheap — 1 credit)
+async function loadTodayEvents() {
+  if (todayEvents) return todayEvents;
+  try {
+    const res = await fetch(`${ODDS_BASE}/sports/basketball_nba/events?apiKey=${ODDS_API_KEY}`);
+    if (!res.ok) throw new Error(`events: HTTP ${res.status}`);
+    const data = await res.json();
+    todayEvents = data || [];
+    console.log(`[OddsAPI] loaded ${todayEvents.length} NBA events`);
+    return todayEvents;
+  } catch(e) {
+    console.error('[OddsAPI] events error:', e.message);
+    return [];
+  }
+}
+
+// Find today's event for a given team name
+function findEventForTeam(teamName, events) {
+  if (!teamName || !events.length) return null;
+  const name = teamName.toLowerCase();
+  return events.find(e =>
+    e.home_team?.toLowerCase().includes(name.split(' ').pop()) ||
+    e.away_team?.toLowerCase().includes(name.split(' ').pop())
+  ) || null;
+}
+
+// Fetch props for a specific event (1 credit per call, cached)
+async function fetchEventProps(eventId) {
+  if (propsCache[eventId]) return propsCache[eventId];
+  const markets = PROP_MARKETS.join(',');
+  const url = `${ODDS_BASE}/sports/basketball_nba/events/${eventId}/odds?apiKey=${ODDS_API_KEY}&regions=us&markets=${markets}&oddsFormat=american`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`props: HTTP ${res.status}`);
+  const data = await res.json();
+  propsCache[eventId] = data;
+  const remaining = res.headers.get('x-requests-remaining');
+  if (remaining) console.log(`[OddsAPI] ${remaining} credits remaining`);
+  return data;
+}
+
+// Extract all props for a specific player from event data
+function extractPlayerProps(eventData, playerName) {
+  const grouped = {}; // market -> { line -> { over, under } }
+  const nameLower = playerName.toLowerCase();
+  if (!eventData?.bookmakers) return grouped;
+
+  eventData.bookmakers.forEach(bk => {
+    bk.markets?.forEach(mkt => {
+      if (!PROP_LABELS[mkt.key]) return;
+      mkt.outcomes?.forEach(o => {
+        if (!o.description?.toLowerCase().includes(nameLower.split(' ').pop())) return;
+        // Match by last name for robustness
+        const lastName = nameLower.split(' ').slice(-1)[0];
+        if (!o.description?.toLowerCase().includes(lastName)) return;
+        const line = String(o.point);
+        if (!grouped[mkt.key]) grouped[mkt.key] = {};
+        if (!grouped[mkt.key][line]) grouped[mkt.key][line] = { over: [], under: [] };
+        if (o.name === 'Over')  grouped[mkt.key][line].over.push(o.price);
+        if (o.name === 'Under') grouped[mkt.key][line].under.push(o.price);
+      });
+    });
+  });
+  return grouped;
+}
+
+async function onPlayerSelected() {
+  const playerName = document.getElementById('p-pi').value.trim();
+  if (!playerName) { hideProps(); return; }
+
+  document.getElementById('props-panel').style.display = '';
+  document.getElementById('props-list').innerHTML = '<div class="props-loading">Fetching today\'s props…</div>';
+  document.getElementById('props-source').textContent = '';
+
+  try {
+    const events = await loadTodayEvents();
+    const teamName = getTeamName('p-team');
+    const event = findEventForTeam(teamName, events);
+
+    if (!event) {
+      document.getElementById('props-list').innerHTML = '<div class="props-loading">No game today — enter stat line manually below</div>';
+      showManualLine(); return;
+    }
+
+    console.log(`[OddsAPI] fetching props for event: ${event.home_team} vs ${event.away_team}`);
+    const eventData = await fetchEventProps(event.id);
+    const grouped = extractPlayerProps(eventData, playerName);
+
+    if (!Object.keys(grouped).length) {
+      document.getElementById('props-list').innerHTML = '<div class="props-loading">No props posted yet for this player — enter stat line manually below</div>';
+      showManualLine(); return;
+    }
+
+    renderProps(grouped, event, playerName);
+    showManualLine();
+  } catch(e) {
+    console.error('[Props] error:', e.message);
+    document.getElementById('props-list').innerHTML = `<div class="props-loading">Could not load props (${e.message}) — enter stat line manually below</div>`;
+    showManualLine();
+  }
+}
+
+function renderProps(grouped, event, playerName) {
+  const opp = event.home_team === getTeamName('p-team') ? event.away_team : event.home_team;
+  document.getElementById('props-source').textContent = `vs ${opp.split(' ').pop()}`;
+
+  const order = PROP_MARKETS.filter(k => grouped[k]);
+  let html = '';
+  order.forEach(type => {
+    const lines = grouped[type];
+    const sortedLines = Object.keys(lines).sort((a,b) => parseFloat(a)-parseFloat(b));
+    html += `<div class="prop-group"><div class="prop-group-label">${PROP_LABELS[type]}</div><div class="prop-lines">`;
+    sortedLines.forEach(line => {
+      const { over, under } = lines[line];
+      const bestOver  = over.length  ? Math.max(...over)  : null;
+      const bestUnder = under.length ? Math.max(...under) : null;
+      const safeType = type.replace(/_/g,'-');
+      const safeLine = line.replace(/\./g,'_');
+      html += `<div class="prop-btn" id="prop-${safeType}-${safeLine}">
+        <span class="line">${line}</span>
+        <div class="ou-row">
+          ${bestOver  != null ? `<span class="ou over"  onclick="selectProp('${type}','${line}','over',${bestOver},'${PROP_LABELS[type]}')">▲ ${fmtAmerican(bestOver)}</span>`  : ''}
+          ${bestUnder != null ? `<span class="ou under" onclick="selectProp('${type}','${line}','under',${bestUnder},'${PROP_LABELS[type]}')">▼ ${fmtAmerican(bestUnder)}</span>` : ''}
+        </div>
+        <div class="odds-row">${over.length+under.length} book${over.length+under.length!==1?'s':''}</div>
+      </div>`;
+    });
+    html += `</div></div>`;
+  });
+
+  document.getElementById('props-list').innerHTML = html || '<div class="props-loading">No matching lines — enter manually below</div>';
+}
+
+function selectProp(type, line, side, americanOdds, typeLabel) {
+  document.querySelectorAll('.prop-btn').forEach(b => b.classList.remove('selected-over','selected-under'));
+  const safeType = type.replace(/_/g,'-');
+  const safeLine = String(line).replace(/\./g,'_');
+  const btn = document.getElementById(`prop-${safeType}-${safeLine}`);
+  if (btn) btn.classList.add(side === 'over' ? 'selected-over' : 'selected-under');
+  const decimal = americanToDecimal(americanOdds);
+  const label = `${side==='over'?'Over':'Under'} ${line} ${typeLabel}`;
+  selectedPropLine = { line: label, type, side, odds: decimal };
+  if (decimal) document.getElementById('p-odds').value = decimal.toFixed(2);
+  document.getElementById('selected-prop-label').textContent = `${label} · ${fmtAmerican(americanOdds)} (${decimal?.toFixed(2)} dec)`;
+  document.getElementById('selected-prop-row').style.display = '';
+}
+
+function clearSelectedProp() {
+  selectedPropLine = null;
+  document.querySelectorAll('.prop-btn').forEach(b => b.classList.remove('selected-over','selected-under'));
+  document.getElementById('selected-prop-row').style.display = 'none';
+  document.getElementById('p-odds').value = '';
+}
+
+function showManualLine() { document.getElementById('manual-line-row').style.display = ''; }
+function hideManualLine() { document.getElementById('manual-line-row').style.display = 'none'; document.getElementById('p-line-manual').value = ''; }
+function hideProps() {
+  document.getElementById('props-panel').style.display = 'none';
+  document.getElementById('selected-prop-row').style.display = 'none';
+  document.getElementById('manual-line-row').style.display = 'none';
+  document.getElementById('p-line-manual').value = '';
+  selectedPropLine = null;
+}
+
+// Leg props also use The Odds API
+async function fetchLegProps(n) {
+  const sport   = document.getElementById('ls-'+n).value;
+  const teamId  = parseInt(document.getElementById('lt-'+n).value);
+  const player  = document.getElementById('lp-'+n).value.trim();
+  const listEl  = document.getElementById('leg-props-list-'+n);
+  const srcEl   = document.getElementById('leg-props-src-'+n);
+
+  if (!player) { listEl.innerHTML='<div class="props-loading">Select a player first</div>'; return; }
+
+  listEl.innerHTML='<div class="props-loading">Loading props…</div>';
+  srcEl.textContent='';
+
+  try {
+    const teamName = getLegTeamName(n);
+    const events = await loadTodayEvents();
+    const event = findEventForTeam(teamName, events);
+    if (!event) { listEl.innerHTML='<div class="props-loading">No game today — use manual field below</div>'; return; }
+
+    const eventData = await fetchEventProps(event.id);
+    const grouped = extractPlayerProps(eventData, player);
+    if (!Object.keys(grouped).length) { listEl.innerHTML='<div class="props-loading">No props yet — use manual field below</div>'; return; }
+
+    const opp = event.home_team === teamName ? event.away_team : event.home_team;
+    srcEl.textContent = `vs ${opp.split(' ').pop()}`;
+
+    const order = PROP_MARKETS.filter(k => grouped[k]);
+    let html = '';
+    order.forEach(type => {
+      const lines = Object.keys(grouped[type]).sort((a,b)=>parseFloat(a)-parseFloat(b));
+      html+=`<div class="prop-group"><div class="prop-group-label">${PROP_LABELS[type]}</div><div class="prop-lines">`;
+      lines.forEach(line=>{
+        const {over,under}=grouped[type][line];
+        const bestOver=over.length?Math.max(...over):null;
+        const bestUnder=under.length?Math.max(...under):null;
+        html+=`<div class="prop-btn">
+          <span class="line">${line}</span>
+          <div class="ou-row">
+            ${bestOver!=null?`<span class="ou over" onmousedown="selectLegProp(${n},'${type}','${line}','over',${bestOver})">▲ ${fmtAmerican(bestOver)}</span>`:''}
+            ${bestUnder!=null?`<span class="ou under" onmousedown="selectLegProp(${n},'${type}','${line}','under',${bestUnder})">▼ ${fmtAmerican(bestUnder)}</span>`:''}
+          </div>
+        </div>`;
+      });
+      html+='</div></div>';
+    });
+    listEl.innerHTML=html||'<div class="props-loading">No lines found — use manual field</div>';
+  } catch(e) {
+    console.error('[LegProps]',e.message);
+    listEl.innerHTML=`<div class="props-loading">Error: ${e.message} — use manual field</div>`;
+  }
+}
+
+function selectLegProp(n, type, line, side, americanOdds) {
+  const label = `${side==='over'?'Over':'Under'} ${line} ${PROP_LABELS[type]||type}`;
+  document.getElementById('ll-'+n).value = label;
+  document.getElementById('ll-manual-'+n).value = '';
+  document.getElementById('leg-props-'+n).classList.remove('open');
+}
+
+// ── SPORT / TEAM UI ───────────────────────────────────────────────────────
+function rebuildSportSelects() {
+  ['p-sport'].forEach(id => {
+    const el = document.getElementById(id); if (!el) return;
+    const cur = el.value;
+    el.innerHTML = `
+      <option value="">— select sport —</option>
+      <option value="NBA">NBA</option>
+      <optgroup label="─── coming soon ───">
+        <option value="NFL" disabled>NFL</option>
+        <option value="NHL" disabled>NHL</option>
+        <option value="MLB" disabled>MLB</option>
+        <option value="UFC/MMA" disabled>UFC / MMA</option>
+      </optgroup>`;
+    if (cur === 'NBA') el.value = cur;
+  });
+}
+
+function initSelects() {
+  ['p-sport'].forEach(id => {
+    const el = document.getElementById(id); if (!el) return;
+    el.innerHTML = `
+      <option value="">— select sport —</option>
+      <option value="NBA">NBA</option>
+      <optgroup label="─── coming soon ───">
+        <option value="NFL" disabled>NFL</option>
+        <option value="NHL" disabled>NHL</option>
+        <option value="MLB" disabled>MLB</option>
+        <option value="UFC/MMA" disabled>UFC / MMA</option>
+      </optgroup>`;
+  });
+}
+
+function populateTeamSelect(sport, teamSelId) {
+  const ts = document.getElementById(teamSelId);
+  ts.innerHTML = '<option value="">— select team —</option>';
+  if (WIP_SPORTS.includes(sport)) {
+    ts.disabled = true;
+    return;
+  }
+  const teams = teamCache[sport] || [];
+  teams.forEach(t => {
+    const o = document.createElement('option'); o.value = t.id; o.dataset.name = t.name;
+    o.textContent = t.name; ts.appendChild(o);
+  });
+  ts.disabled = false;
+}
+
+function onSportChange(sid, tid, piid) {
+  const sport = document.getElementById(sid).value;
+  hideProps();
+  if (WIP_SPORTS.includes(sport)) {
+    const ts = document.getElementById(tid);
+    ts.innerHTML = '<option value="">— coming soon —</option>';
+    ts.disabled = true;
+    if (piid) { document.getElementById(piid).value = ''; }
+    return;
+  }
+  populateTeamSelect(sport, tid);
+  if (piid) { document.getElementById(piid).value = ''; closeAC(piid.replace('-pi','-ac')); }
+}
+
+async function onTeamChange(sid, tid, piid, acid) {
+  if (piid) { document.getElementById(piid).value = ''; }
+  if (acid) closeAC(acid);
+  // Pre-warm the roster cache on team selection
+  const sport = document.getElementById(sid).value;
+  const teamId = document.getElementById(tid).value;
+  if (sport && teamId) await loadRoster(sport, teamId);
+}
+
+function getTeamName(teamSelId) {
+  const sel = document.getElementById(teamSelId);
+  const opt = sel.options[sel.selectedIndex];
+  return opt ? opt.dataset.name || opt.textContent : '';
+}
+
+// ── AUTOCOMPLETE ──────────────────────────────────────────────────────────
+async function onPI(el, sid, tid, acid) {
+  const sport  = document.getElementById(sid)?.value || '';
+  const teamId = document.getElementById(tid)?.value || '';
+  const q      = el.value.toLowerCase().trim();
+  const ac     = document.getElementById(acid); if (!ac) return;
+
+  if (!sport || !teamId) {
+    ac.innerHTML = '<div class="ac-loading">Select a sport and team first</div>';
+    ac.classList.add('open'); return;
+  }
+
+  // Show loading state while fetching
+  if (!rosterCache[`${sport}_${teamId}`]) {
+    ac.innerHTML = '<div class="ac-loading">Loading players…</div>';
+    ac.classList.add('open');
+  }
+
+  const players = await loadRoster(sport, teamId);
+
+  if (!players.length) {
+    ac.innerHTML = '<div class="ac-loading">No players found — type name manually</div>';
+    ac.classList.add('open'); return;
+  }
+
+  const hits = q ? players.filter(p => p.name.toLowerCase().includes(q)) : players;
+
+  if (!hits.length) { ac.innerHTML = ''; ac.classList.remove('open'); return; }
+
+  ac.innerHTML = hits.slice(0, 25).map(p =>
+    `<div data-v="${p.name}" onmousedown="selP(event,'${el.id}','${acid}')">${p.name}${p.pos ? `<span class="pos-tag">${p.pos}</span>` : ''}</div>`
+  ).join('');
+  ac.classList.add('open');
+  ac.dataset.i = '-1';
+}
+
+function selP(e, iid, acid) {
+  e.preventDefault();
+  document.getElementById(iid).value = e.currentTarget.dataset.v;
+  const ac = document.getElementById(acid); ac.innerHTML=''; ac.classList.remove('open');
+  // If main prop player input, fetch props
+  if (iid === 'p-pi') { onPlayerSelected(); return; }
+  // If a leg player input, auto-open and fetch leg props
+  const legMatch = iid.match(/^lp-(\d+)$/);
+  if (legMatch) {
+    const n = legMatch[1];
+    document.getElementById('leg-props-'+n).classList.add('open');
+    fetchLegProps(n);
+  }
+}
+
+function closeAC(acid) { const ac=document.getElementById(acid); if(ac){ac.innerHTML='';ac.classList.remove('open');} }
+
+function onPK(e, acid, iid) {
+  const ac=document.getElementById(acid), items=ac.querySelectorAll('div:not(.ac-loading)');
+  let idx=parseInt(ac.dataset.i||'-1');
+  if(e.key==='ArrowDown'){e.preventDefault();idx=Math.min(idx+1,items.length-1);}
+  else if(e.key==='ArrowUp'){e.preventDefault();idx=Math.max(idx-1,-1);}
+  else if(e.key==='Enter'&&idx>=0){e.preventDefault();const ch=items[idx];if(ch){document.getElementById(iid).value=ch.dataset.v;ac.innerHTML='';ac.classList.remove('open');}ac.dataset.i='-1';return;}
+  else if(e.key==='Escape'){ac.innerHTML='';ac.classList.remove('open');return;}
+  else return;
+  ac.dataset.i=idx;
+  items.forEach((it,i)=>it.classList.toggle('aci',i===idx));
+  if(idx>=0)items[idx].scrollIntoView({block:'nearest'});
+}
+
+document.addEventListener('mousedown', e => {
+  document.querySelectorAll('.ac-list.open').forEach(ac => {
+    if (!ac.parentElement?.contains(e.target)) { ac.innerHTML=''; ac.classList.remove('open'); }
+  });
+});
+
+// ── LEGS ──────────────────────────────────────────────────────────────────
+let bets=JSON.parse(localStorage.getItem('bettrack_v9')||'[]');
+let activeFilter='all', legIdCounter=0, expandedIds=new Set();
+
+['p-date','pl-date'].forEach(id => { const el=document.getElementById(id); if(el) el.valueAsDate=new Date(); });
+
+function save(){try{localStorage.setItem('bettrack_v9',JSON.stringify(bets));}catch(e){}}
+function toWin(s,o){return s*(o-1);}
+function pl(b){if(b.result==='win')return toWin(b.stake,b.odds);if(b.result==='loss')return -b.stake;return 0;}
+function fmt(n){return(n>=0?'+':'-')+'$'+Math.abs(n).toFixed(2);}
+function fmtP(n){return'$'+Math.abs(n).toFixed(2);}
+function today(){return new Date().toISOString().slice(0,10);}
+
+function switchTab(t){
+  ['prop','parlay'].forEach(k=>{document.getElementById('pane-'+k).style.display=k===t?'':'none';document.getElementById('tab-btn-'+k).classList.toggle('active',k===t);});
+  if(t==='parlay'&&!document.getElementById('legs-container').children.length){addLeg();addLeg();}
+}
+
+function addLeg(){
+  legIdCounter++;const n=legIdCounter;
+  const d=document.createElement('div');d.className='leg-row';d.id='lr-'+n;
+  const so=`<option value="">— sport —</option>
+    <option value="NBA">NBA</option>
+    <optgroup label="─── coming soon ───">
+      <option value="NFL" disabled>NFL</option>
+      <option value="NHL" disabled>NHL</option>
+      <option value="MLB" disabled>MLB</option>
+      <option value="UFC/MMA" disabled>UFC / MMA</option>
+    </optgroup>`;
+  d.innerHTML=`
+    <span class="leg-num">${document.getElementById('legs-container').children.length+1}</span>
+    <select id="ls-${n}" onchange="onLegSportChange(${n})">${so}</select>
+    <select id="lt-${n}" disabled onchange="onLegTeamChange(${n})"><option value="">— team —</option></select>
+    <div class="player-wrap">
+      <input id="lp-${n}" placeholder="Player…" autocomplete="off"
+        oninput="onPI(this,'ls-${n}','lt-${n}','la-${n}')"
+        onfocus="onPI(this,'ls-${n}','lt-${n}','la-${n}')"
+        onkeydown="onPK(event,'la-${n}','lp-${n}')"/>
+      <div class="ac-list" id="la-${n}"></div>
+    </div>
+    <input id="ll-${n}" placeholder="Stat line…" readonly style="cursor:pointer;background:var(--surface3)" onclick="toggleLegProps(${n})" title="Click to pick a prop"/>
+    <select id="lr2-${n}"><option value="pending">Pending</option><option value="win">Win</option><option value="loss">Loss</option><option value="push">Push</option></select>
+    <button class="btn danger" onclick="removeLeg(${n})" style="padding:4px 6px;font-size:13px;align-self:start;margin-top:2px">✕</button>
+    <div style="grid-column:1/-1">
+      <div class="leg-props" id="leg-props-${n}">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.06em" id="leg-props-title-${n}">Props</span>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span id="leg-props-src-${n}" style="font-size:11px;color:var(--muted)"></span>
+            <button class="btn ghost" onclick="fetchLegProps(${n})" style="font-size:11px;padding:3px 8px">↻ refresh</button>
+          </div>
+        </div>
+        <div id="leg-props-list-${n}"><div class="props-loading">Select a player first</div></div>
+        <div style="margin-top:8px">
+          <input id="ll-manual-${n}" placeholder="Or type stat line manually…" style="font-size:12px;padding:6px 8px;background:var(--surface2)"/>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('legs-container').appendChild(d);refreshLegNums();
+}
+
+function onLegSportChange(n){
+  const sport=document.getElementById('ls-'+n).value;
+  const ts=document.getElementById('lt-'+n);
+  if(WIP_SPORTS.includes(sport)){
+    ts.innerHTML='<option value="">— coming soon —</option>';
+    ts.disabled=true;
+    document.getElementById('lp-'+n).value='';closeAC('la-'+n);
+    return;
+  }
+  populateTeamSelect(sport,'lt-'+n);
+  document.getElementById('lp-'+n).value='';closeAC('la-'+n);
+  document.getElementById('ll-'+n).value='';
+  document.getElementById('leg-props-'+n).classList.remove('open');
+}
+
+function toggleLegProps(n) {
+  const panel = document.getElementById('leg-props-'+n);
+  const isOpen = panel.classList.contains('open');
+  if (!isOpen) {
+    panel.classList.add('open');
+    const player = document.getElementById('lp-'+n).value.trim();
+    if (player) fetchLegProps(n);
+  } else {
+    panel.classList.remove('open');
+  }
+}
+
+
+async function onLegTeamChange(n){
+  document.getElementById('lp-'+n).value='';closeAC('la-'+n);
+  const sport=document.getElementById('ls-'+n).value;
+  const teamId=document.getElementById('lt-'+n).value;
+  if(sport&&teamId) await loadRoster(sport,teamId);
+}
+
+function getLegTeamName(n){
+  const sel=document.getElementById('lt-'+n);
+  const opt=sel.options[sel.selectedIndex];
+  return opt?opt.dataset.name||opt.textContent:'';
+}
+
+function removeLeg(n){document.getElementById('lr-'+n)?.remove();refreshLegNums();}
+function refreshLegNums(){
+  const rows=document.getElementById('legs-container').children;
+  document.getElementById('leg-count-label').textContent=rows.length+' leg'+(rows.length!==1?'s':'');
+  Array.from(rows).forEach((r,i)=>{const e=r.querySelector('.leg-num');if(e)e.textContent=i+1;});
+}
+function collectLegs(){
+  return Array.from(document.getElementById('legs-container').children).map(r=>{
+    const id=r.id.replace('lr-','');
+    const propLine = document.getElementById('ll-'+id)?.value.trim();
+    const manualLine = document.getElementById('ll-manual-'+id)?.value.trim();
+    return{sport:document.getElementById('ls-'+id).value,team:getLegTeamName(id),
+           player:document.getElementById('lp-'+id).value.trim(),
+           line: propLine || manualLine || '—',
+           result:document.getElementById('lr2-'+id).value};
+  });
+}
+
+// ── ADD BETS ──────────────────────────────────────────────────────────────
+function addProp(){
+  const sport=document.getElementById('p-sport').value;
+  const team=getTeamName('p-team');
+  const teamId=document.getElementById('p-team').value;
+  const player=document.getElementById('p-pi').value.trim();
+  // Use selected prop line if picked, otherwise manual input
+  const line = selectedPropLine ? selectedPropLine.line : document.getElementById('p-line-manual').value.trim();
+  const stake=parseFloat(document.getElementById('p-stake').value);
+  const odds=parseFloat(document.getElementById('p-odds').value);
+  const result=document.getElementById('p-result').value;
+  const date=document.getElementById('p-date').value||today();
+  if(!sport){alert('Select a sport.');return;}if(!teamId){alert('Select a team.');return;}
+  if(!player){alert('Enter a player name.');return;}
+  if(!line){alert('Select a prop line above, or enter a stat line manually in the field below.');return;}
+  if(!stake||stake<=0){alert('Enter a valid stake.');return;}
+  if(!odds||odds<1.01){alert('Decimal odds must be ≥ 1.01');return;}
+  bets.unshift({id:Date.now(),kind:'prop',sport,team,player,line,stake,odds,result,date});
+  save();render();
+  // Reset form
+  document.getElementById('p-sport').value='';
+  document.getElementById('p-team').innerHTML='<option value="">— select team —</option>';
+  document.getElementById('p-team').disabled=true;
+  document.getElementById('p-pi').value='';closeAC('p-ac');
+  ['p-stake','p-odds'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('p-result').value='pending';
+  hideProps();
+  selectedPropLine=null;
+  document.getElementById('p-line-manual').value='';
+}
+
+function addParlay(){
+  const name=document.getElementById('pl-name').value.trim();
+  const stake=parseFloat(document.getElementById('pl-stake').value);
+  const odds=parseFloat(document.getElementById('pl-odds').value);
+  const date=document.getElementById('pl-date').value||today();
+  const legs=collectLegs();
+  if(legs.length<2){alert('Add at least 2 legs.');return;}if(!stake||stake<=0){alert('Enter a valid stake.');return;}
+  if(!odds||odds<1.01){alert('Decimal odds must be ≥ 1.01');return;}
+  const lr=legs.map(l=>l.result);
+  let result='pending';
+  if(lr.every(r=>r==='win'))result='win';
+  else if(lr.some(r=>r==='loss'))result='loss';
+  else if(lr.every(r=>r==='push'))result='push';
+  else if(!lr.some(r=>r==='pending')&&lr.some(r=>r==='win'))result='partial';
+  const sc={};legs.forEach(l=>{if(l.sport)sc[l.sport]=(sc[l.sport]||0)+1;});
+  const ps=Object.keys(sc).sort((a,b)=>sc[b]-sc[a])[0]||'';
+  bets.unshift({id:Date.now(),kind:'parlay',sport:ps,name:name||('Prop parlay – '+date),stake,odds,result,date,legs});
+  save();render();
+  document.getElementById('pl-name').value='';document.getElementById('pl-stake').value='';document.getElementById('pl-odds').value='';
+  document.getElementById('legs-container').innerHTML='';legIdCounter=0;addLeg();addLeg();
+}
+
+function cycleResult(id, event){
+  event.stopPropagation();
+  const cycle=['pending','win','loss','push'];
+  const b=bets.find(x=>x.id===id);if(!b)return;
+  const idx=cycle.indexOf(b.result);
+  b.result=cycle[(idx+1)%cycle.length];
+  // For parlays, also update overall based on legs if needed
+  save();render();
+}
+function cycleLegResult(betId, legIdx, event){
+  event.stopPropagation();
+  const cycle=['pending','win','loss','push'];
+  const b=bets.find(x=>x.id===betId);if(!b||!b.legs||!b.legs[legIdx])return;
+  const leg=b.legs[legIdx];
+  const idx=cycle.indexOf(leg.result);
+  leg.result=cycle[(idx+1)%cycle.length];
+  // Recalculate parlay overall
+  const lr=b.legs.map(l=>l.result);
+  if(lr.every(r=>r==='win'))b.result='win';
+  else if(lr.some(r=>r==='loss'))b.result='loss';
+  else if(lr.every(r=>r==='push'))b.result='push';
+  else if(lr.every(r=>r==='pending'))b.result='pending';
+  else if(!lr.some(r=>r==='pending')&&lr.some(r=>r==='win'))b.result='partial';
+  else b.result='pending';
+  save();render();
+}
+function deleteBet(id){if(!confirm('Delete this bet?'))return;bets=bets.filter(b=>b.id!==id);expandedIds.delete(id);save();render();}
+function clearAll(){if(!confirm('Clear ALL bets?'))return;bets=[];expandedIds.clear();save();render();}
+function toggleExpand(id){if(expandedIds.has(id))expandedIds.delete(id);else expandedIds.add(id);render();}
+function setFilter(f){activeFilter=f;render();}
+
+function exportCSV(){
+  const rows=[['Date','Kind','Sport','Team','Description','Bet Type','Player','Stat Line','Stake','Decimal Odds','To Win','P/L','Result']];
+  bets.forEach(b=>{
+    const tw=toWin(b.stake,b.odds).toFixed(2),pnl=b.result==='pending'?'':pl(b).toFixed(2);
+    rows.push([b.date,b.kind,b.sport||'',b.team||'',b.event||b.name||'',b.type||'',b.player||'',b.line||'',b.stake.toFixed(2),b.odds.toFixed(2),tw,pnl,b.result]);
+    if(b.legs)b.legs.forEach((l,i)=>rows.push([b.date,'leg '+(i+1),l.sport||'',l.team||'','','',l.player||'',l.line||'','','','','',l.result]));
+  });
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download='bets.csv';a.click();
+}
+
+// ── CHART ─────────────────────────────────────────────────────────────────
+function drawChart(data){
+  const cv=document.getElementById('pl-chart'),ctx=cv.getContext('2d'),dpr=window.devicePixelRatio||1;
+  const rect=cv.getBoundingClientRect();cv.width=rect.width*dpr;cv.height=rect.height*dpr;ctx.scale(dpr,dpr);
+  const W=rect.width,H=rect.height;ctx.clearRect(0,0,W,H);
+  if(data.length<2){ctx.fillStyle='#444448';ctx.font='13px DM Sans,sans-serif';ctx.textAlign='center';ctx.fillText('Add settled bets to see your P/L curve',W/2,H/2);return;}
+  const pad={top:12,right:16,bottom:24,left:56},iW=W-pad.left-pad.right,iH=H-pad.top-pad.bottom;
+  const minV=Math.min(0,...data),maxV=Math.max(0,...data),range=maxV-minV||1;
+  const xP=i=>pad.left+(i/(data.length-1))*iW,yP=v=>pad.top+iH-((v-minV)/range)*iH;
+  ctx.strokeStyle='#2a2a2e';ctx.lineWidth=1;ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(pad.left,yP(0));ctx.lineTo(pad.left+iW,yP(0));ctx.stroke();ctx.setLineDash([]);
+  const last=data[data.length-1];
+  ctx.beginPath();ctx.moveTo(xP(0),yP(data[0]));data.forEach((v,i)=>ctx.lineTo(xP(i),yP(v)));
+  ctx.lineTo(xP(data.length-1),yP(0));ctx.lineTo(xP(0),yP(0));ctx.closePath();
+  ctx.fillStyle=last>=0?'rgba(62,207,110,0.08)':'rgba(240,82,82,0.08)';ctx.fill();
+  ctx.beginPath();ctx.moveTo(xP(0),yP(data[0]));data.forEach((v,i)=>ctx.lineTo(xP(i),yP(v)));
+  ctx.strokeStyle=last>=0?'#3ecf6e':'#f05252';ctx.lineWidth=2;ctx.lineJoin='round';ctx.stroke();
+  ctx.fillStyle='#7a7a80';ctx.font='11px DM Mono,monospace';ctx.textAlign='right';
+  [minV,0,maxV].forEach(v=>{if(Math.abs(maxV-minV)<0.01)return;ctx.fillText((v>=0?'+':'')+' $'+v.toFixed(0),pad.left-6,yP(v)+4);});
+}
+
+// ── LIVE STATS ENGINE ─────────────────────────────────────────────────────
+let liveStatsCache = {}; // player name (lower) -> { stat values, gameStatus, period, time }
+let livePollingTimer = null;
+const LIVE_POLL_INTERVAL = 60000; // 60 seconds
+
+// Map prop line labels to balldontlie stat field names
+const STAT_FIELD_MAP = {
+  'points': 'pts', 'pts': 'pts',
+  'rebounds': 'reb', 'reb': 'reb',
+  'assists': 'ast', 'ast': 'ast',
+  'steals': 'stl', 'stl': 'stl',
+  'blocks': 'blk', 'blk': 'blk',
+  'turnovers': 'turnover', 'turnover': 'turnover',
+  '3-pointers': 'fg3m', 'threes': 'fg3m', 'fg3m': 'fg3m', '3pm': 'fg3m',
+  'pts+reb+ast': 'pra', 'pra': 'pra',
+  'pts+reb': 'pr', 'pr': 'pr',
+  'pts+ast': 'pa', 'pa': 'pa',
+  'reb+ast': 'ra', 'ra': 'ra',
+};
+
+// Parse a bet line string like "Over 25.5 Points" -> { side, target, statKey }
+function parseBetLine(line) {
+  if (!line || line === '—') return null;
+  const lower = line.toLowerCase();
+  const side = lower.startsWith('over') ? 'over' : lower.startsWith('under') ? 'under' : null;
+  if (!side) return null;
+  // Extract number
+  const numMatch = line.match(/[\d.]+/);
+  if (!numMatch) return null;
+  const target = parseFloat(numMatch[0]);
+  // Extract stat type (everything after the number)
+  const afterNum = lower.replace(/^(over|under)\s*[\d.]+\s*/,'').trim();
+  const statKey = STAT_FIELD_MAP[afterNum] || null;
+  return statKey ? { side, target, statKey } : null;
+}
+
+// Get combined stat value from a player stat object
+function getStatValue(stats, statKey) {
+  if (!stats) return 0;
+  switch(statKey) {
+    case 'pts': return stats.pts || 0;
+    case 'reb': return stats.reb || 0;
+    case 'ast': return stats.ast || 0;
+    case 'stl': return stats.stl || 0;
+    case 'blk': return stats.blk || 0;
+    case 'turnover': return stats.turnover || 0;
+    case 'fg3m': return stats.fg3m || 0;
+    case 'pra': return (stats.pts||0)+(stats.reb||0)+(stats.ast||0);
+    case 'pr':  return (stats.pts||0)+(stats.reb||0);
+    case 'pa':  return (stats.pts||0)+(stats.ast||0);
+    case 'ra':  return (stats.reb||0)+(stats.ast||0);
+    default: return 0;
+  }
+}
+
+// Grade a bet given current stat vs line
+function gradeBet(side, target, current) {
+  if (side === 'over')  return current > target ? 'win' : current === target ? 'push' : 'loss';
+  if (side === 'under') return current < target ? 'win' : current === target ? 'push' : 'loss';
+  return 'pending';
+}
+
+// Fetch today's games, then stats for active/final games (All-Star tier compatible)
+async function pollLiveStats() {
+  // Only poll if we have pending prop or parlay bets
+  const pendingProps = bets.filter(b => b.result === 'pending' && (b.kind === 'prop' || b.kind === 'parlay'));
+  if (!pendingProps.length) return;
+
+  try {
+    // Step 1: Get today's games
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const gamesRes = await fetch(`${BASE}/nba/v1/games?dates[]=${todayStr}&per_page=50`, { headers: HEADERS });
+    if (!gamesRes.ok) { console.warn('[Live] games fetch failed:', gamesRes.status); return; }
+    const gamesJson = await gamesRes.json();
+    const games = gamesJson.data || [];
+
+    if (!games.length) { console.log('[Live] no games today'); return; }
+
+    // Step 2: Find games that are in progress or Final
+    const activeGames = games.filter(g => {
+      const s = (g.status || '').toLowerCase();
+      return s !== '' && s !== 'scheduled' && s !== 'not started';
+    });
+    if (!activeGames.length) { console.log('[Live] no active/final games yet'); return; }
+
+    // Step 3: Fetch stats for each active game
+    const newCache = {};
+    for (const game of activeGames) {
+      const isFinal = (game.status || '').toLowerCase().includes('final');
+      const period = game.period || 0;
+      const time = game.time || '';
+      const isLive = !isFinal && period > 0;
+
+      try {
+        const statsRes = await fetch(`${BASE}/nba/v1/stats?game_ids[]=${game.id}`, { headers: HEADERS });
+        if (!statsRes.ok) { console.warn(`[Live] stats fetch failed for game ${game.id}:`, statsRes.status); continue; }
+        const statsJson = await statsRes.json();
+        const statRows = statsJson.data || [];
+
+        statRows.forEach(s => {
+          if (!s.player) return;
+          const name = `${s.player.first_name} ${s.player.last_name}`.toLowerCase();
+          newCache[name] = {
+            pts: s.pts || 0, reb: s.reb || 0, ast: s.ast || 0,
+            stl: s.stl || 0, blk: s.blk || 0, turnover: s.turnover || 0,
+            fg3m: s.fg3m || 0,
+            status: game.status, period, time, isFinal, isLive,
+            gameId: game.id,
+          };
+        });
+      } catch(e) {
+        console.warn(`[Live] stats error for game ${game.id}:`, e.message);
+      }
+    }
+
+    liveStatsCache = newCache;
+    console.log(`[Live] updated ${Object.keys(newCache).length} player stats from ${activeGames.length} game(s)`);
+
+    // Auto-grade pending bets where game is Final
+    let graded = false;
+    bets.forEach(b => {
+      if (b.result !== 'pending') return;
+      if (b.kind === 'prop') {
+        const parsed = parseBetLine(b.line);
+        if (!parsed) return;
+        const pStats = liveStatsCache[b.player?.toLowerCase()];
+        if (!pStats?.isFinal) return;
+        const current = getStatValue(pStats, parsed.statKey);
+        b.result = gradeBet(parsed.side, parsed.target, current);
+        graded = true;
+      } else if (b.kind === 'parlay') {
+        let anyChange = false;
+        b.legs.forEach(leg => {
+          if (leg.result !== 'pending') return;
+          const parsed = parseBetLine(leg.line);
+          if (!parsed) return;
+          const pStats = liveStatsCache[leg.player?.toLowerCase()];
+          if (!pStats?.isFinal) return;
+          const current = getStatValue(pStats, parsed.statKey);
+          leg.result = gradeBet(parsed.side, parsed.target, current);
+          anyChange = true;
+        });
+        if (anyChange) {
+          const lr = b.legs.map(l => l.result);
+          if (lr.every(r => r === 'win')) b.result = 'win';
+          else if (lr.some(r => r === 'loss')) b.result = 'loss';
+          else if (lr.every(r => r === 'push')) b.result = 'push';
+          else if (!lr.some(r => r === 'pending') && lr.some(r => r === 'win')) b.result = 'partial';
+          graded = true;
+        }
+      }
+    });
+
+    if (graded) { save(); }
+    updateLiveMeters();
+
+  } catch(e) {
+    console.error('[Live] poll error:', e.message);
+  }
+}
+
+// Update only the live meter elements in the table without full re-render
+function updateLiveMeters() {
+  bets.forEach(b => {
+    if (b.result !== 'pending') return;
+    if (b.kind === 'prop') {
+      const el = document.getElementById(`meter-${b.id}`);
+      if (el) el.outerHTML = buildMeter(b.id, b.player, b.line);
+    } else if (b.kind === 'parlay') {
+      b.legs.forEach((leg, i) => {
+        const el = document.getElementById(`meter-${b.id}-${i}`);
+        if (el) el.outerHTML = buildLegMeter(b.id, i, leg.player, leg.line);
+      });
+    }
+  });
+  // If any bets were auto-graded, do a full render
+  if (bets.some(b => b.result !== 'pending' && !document.getElementById(`meter-${b.id}`))) {
+    render();
+  }
+}
+
+function buildMeter(betId, playerName, line) {
+  if (!playerName || !line || line === '—') return `<div id="meter-${betId}"></div>`;
+  const parsed = parseBetLine(line);
+  if (!parsed) return `<div id="meter-${betId}"></div>`;
+  const pStats = liveStatsCache[playerName?.toLowerCase()];
+  if (!pStats?.isLive && !pStats?.isFinal) return `<div id="meter-${betId}"></div>`;
+
+  const current = getStatValue(pStats, parsed.statKey);
+  const { side, target } = parsed;
+  const pct = Math.min(100, (current / target) * 100);
+  const hit = side === 'over' ? current >= target : current <= target;
+  const onTrack = side === 'over' ? current / target >= 0.6 : true;
+  const barClass = hit ? 'hit' : onTrack ? 'on-track' : 'danger';
+  const needs = side === 'over' ? Math.max(0, target - current) : null;
+  const clock = pStats.isFinal ? 'Final' : `Q${pStats.period} ${pStats.time||''}`;
+  const needsStr = needs !== null && !hit ? ` · needs ${needs.toFixed(1)} more` : hit ? ' · ✓ HIT' : '';
+
+  return `<div id="meter-${betId}" class="live-meter">
+    <div class="live-meter-header">
+      <span class="live-meter-player"><span class="live-dot"></span>${playerName}</span>
+      <span class="live-meter-clock">${clock}</span>
+    </div>
+    <div class="live-meter-bar-wrap">
+      <div class="live-meter-bar ${barClass}" style="width:${pct}%"></div>
+    </div>
+    <div class="live-meter-footer">
+      <span class="live-meter-stat">${current} / ${target}</span>
+      <span class="live-meter-target">${side === 'over' ? 'Over' : 'Under'} ${target}${needsStr}</span>
+    </div>
+  </div>`;
+}
+
+function buildLegMeter(betId, legIdx, playerName, line) {
+  if (!playerName || !line || line === '—') return `<div id="meter-${betId}-${legIdx}"></div>`;
+  const parsed = parseBetLine(line);
+  if (!parsed) return `<div id="meter-${betId}-${legIdx}"></div>`;
+  const pStats = liveStatsCache[playerName?.toLowerCase()];
+  if (!pStats?.isLive && !pStats?.isFinal) return `<div id="meter-${betId}-${legIdx}"></div>`;
+
+  const current = getStatValue(pStats, parsed.statKey);
+  const { side, target } = parsed;
+  const pct = Math.min(100, (current / target) * 100);
+  const hit = side === 'over' ? current >= target : current <= target;
+  const barClass = hit ? 'hit' : (current / target >= 0.6) ? 'on-track' : 'danger';
+  const clock = pStats.isFinal ? 'Final' : `Q${pStats.period} ${pStats.time||''}`;
+
+  return `<div id="meter-${betId}-${legIdx}" class="live-meter">
+    <div class="live-meter-header">
+      <span class="live-meter-player"><span class="live-dot"></span>${playerName}</span>
+      <span class="live-meter-clock">${clock}</span>
+    </div>
+    <div class="live-meter-bar-wrap">
+      <div class="live-meter-bar ${barClass}" style="width:${pct}%"></div>
+    </div>
+    <div class="live-meter-footer">
+      <span class="live-meter-stat">${current} / ${target}</span>
+      <span class="live-meter-target">${side==='over'?'Over':'Under'} ${target}${hit?' · ✓ HIT':side==='over'?' · needs '+Math.max(0,target-current).toFixed(1)+' more':''}</span>
+    </div>
+  </div>`;
+}
+
+function startLivePolling() {
+  pollLiveStats(); // immediate first poll
+  livePollingTimer = setInterval(pollLiveStats, LIVE_POLL_INTERVAL);
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────
+function render(){
+  const settled=bets.filter(b=>b.result!=='pending');
+  const wins=settled.filter(b=>b.result==='win').length,losses=settled.filter(b=>b.result==='loss').length,pushes=settled.filter(b=>b.result==='push').length;
+  const ts=settled.reduce((a,b)=>a+b.stake,0),tp=settled.reduce((a,b)=>a+pl(b),0);
+  const roi=ts>0?(tp/ts*100):0,wr=settled.length>0?(wins/settled.length*100):0;
+  const wl=settled.length>0?`${wins}W – ${losses}L${pushes>0?` – ${pushes}P`:''}`:'—';
+  document.getElementById('stats-row').innerHTML=`
+    <div class="stat-card blue"><div class="stat-label">Total bets</div><div class="stat-value">${bets.length}</div><div class="stat-sub">${settled.length} settled · ${bets.filter(b=>b.result==='pending').length} pending</div></div>
+    <div class="stat-card ${wins>=losses?'green':'red'}"><div class="stat-label">Record</div><div class="stat-value" style="font-size:18px;padding-top:4px">${wl}</div><div class="stat-sub">${settled.length>0?wr.toFixed(1)+'% win rate':'no settled bets yet'}</div></div>
+    <div class="stat-card ${tp>=0?'green':'red'}"><div class="stat-label">Profit / loss</div><div class="stat-value ${tp>=0?'pos':'neg'}">${tp>=0?'+':'-'}$${Math.abs(tp).toFixed(2)}</div><div class="stat-sub">on $${ts.toFixed(2)} staked</div></div>
+    <div class="stat-card ${roi>=0?'green':'red'}"><div class="stat-label">ROI</div><div class="stat-value ${roi>=0?'pos':'neg'}">${roi>=0?'+':''}${roi.toFixed(1)}%</div><div class="stat-sub">return on investment</div></div>`;
+  const ss=[...settled].sort((a,b)=>a.date.localeCompare(b.date)||a.id-b.id);let cum=0;
+  setTimeout(()=>drawChart([0,...ss.map(b=>{cum+=pl(b);return cum;})]),50);
+  const us=new Set();bets.forEach(b=>{if(b.sport)us.add(b.sport);if(b.legs)b.legs.forEach(l=>{if(l.sport)us.add(l.sport);});});
+  document.getElementById('filters').innerHTML=['all','prop','parlay',...Array.from(us)].map(f=>`<button class="filter-chip ${activeFilter===f?'active':''}" onclick="setFilter('${f.replace(/'/g,"\\'")}')"> ${f==='all'?'All bets':f}</button>`).join('');
+  let visible=bets;
+  if(activeFilter==='prop')visible=bets.filter(b=>b.kind==='prop');
+  else if(activeFilter==='parlay')visible=bets.filter(b=>b.kind==='parlay');
+  else if(activeFilter!=='all')visible=bets.filter(b=>b.sport===activeFilter||(b.legs&&b.legs.some(l=>l.sport===activeFilter)));
+  document.getElementById('bet-count').textContent=`${visible.length} bet${visible.length!==1?'s':''}`;
+  const tbody=document.getElementById('bet-body');
+  if(!visible.length){tbody.innerHTML=`<tr><td colspan="9"><div class="empty-state"><div style="font-size:28px;opacity:.3;margin-bottom:10px">◎</div><p>No bets yet — add your first one above</p></div></td></tr>`;return;}
+  let html='';
+  visible.forEach(b=>{
+    const tw=toWin(b.stake,b.odds),pnl=pl(b);
+    const plCell=b.result==='pending'?`<span class="pl-neu">—</span>`:`<span class="${pnl>=0?'pl-pos':'pl-neg'}">${fmt(pnl)}</span>`;
+    const hasLegs=b.kind==='parlay'&&b.legs&&b.legs.length>0,isOpen=expandedIds.has(b.id);
+    const stag=b.sport?`<span class="sport-tag">${b.sport}</span>`:'';
+    let desc='',pill='';
+    if(b.kind==='standard'){
+      const ex=b.event&&b.team&&b.event!==b.team?` <span style="color:var(--muted);font-size:12px">– ${b.event.replace(b.team+' – ','')}</span>`:'';
+      desc=`${stag}<strong style="font-weight:500">${b.team||b.event}</strong>${ex} <span style="color:var(--muted);font-size:12px">[${b.type}]</span>`;
+      pill=`<span class="type-pill standard">standard</span>`;
+    }else if(b.kind==='prop'){
+      desc=`${stag}<strong style="font-weight:500">${b.player}</strong> <span style="color:var(--muted);font-size:12px">${b.line} · ${b.team||''}</span>`;
+      pill=`<span class="type-pill prop">prop</span>`;
+    }else{      const lw=b.legs.filter(l=>l.result==='win').length;
+      desc=`${stag}<strong style="font-weight:500">${b.name}</strong> <span style="color:var(--muted);font-size:12px">${b.legs.length} legs${b.result!=='pending'?' · '+lw+'/'+b.legs.length+' hit':''}</span><span class="earrow ${isOpen?'open':''}">▶</span>`;
+      pill=`<span class="type-pill parlay">parlay</span>`;
+    }
+    const rb=b.result==='partial'?`<span class="badge partial" onclick="cycleResult(${b.id},event)" style="cursor:pointer" title="Click to change result">partial</span>`:`<span class="badge ${b.result}" onclick="cycleResult(${b.id},event)" style="cursor:pointer" title="Click to change result">${b.result}</span>`;
+    html+=`<tr class="bet-row ${hasLegs?'expandable':''}" ${hasLegs?`onclick="toggleExpand(${b.id})"`:''}>
+      <td class="mono" style="color:var(--muted)">${b.date}</td>
+      <td style="max-width:340px;overflow:hidden;text-overflow:ellipsis">${desc}${b.kind==='prop'&&b.result==='pending'?buildMeter(b.id,b.player,b.line):''}</td>
+      <td>${pill}</td><td class="mono">${fmtP(b.stake)}</td><td class="mono">${b.odds.toFixed(2)}</td>
+      <td class="mono" style="color:var(--muted)">${fmtP(tw)}</td><td>${plCell}</td><td>${rb}</td>
+      <td><button class="btn danger" onclick="event.stopPropagation();deleteBet(${b.id})">✕</button></td>
+    </tr>`;
+    if(hasLegs&&isOpen){
+      html+=`<tr class="legs-detail"><td colspan="9"><div class="legs-inner">
+        <table><thead><tr><th>Sport</th><th>Team</th><th>Player</th><th>Stat line</th><th style="width:90px">Result</th></tr></thead>
+        <tbody>${b.legs.map((l,i)=>`<tr><td>${l.sport||'—'}</td><td>${l.team||'—'}</td><td class="pcell">${l.player||'—'}</td><td>${l.line||'—'}${l.result==='pending'?buildLegMeter(b.id,i,l.player,l.line):''}</td><td><span class="badge ${l.result}" onclick="cycleLegResult(${b.id},${i},event)" style="cursor:pointer" title="Click to change result">${l.result}</span></td></tr>`).join('')}</tbody>
+        </table></div></td></tr>`;
+    }
+  });
+  tbody.innerHTML=html;
+}
+
+window.addEventListener('resize',()=>{const s=[...bets.filter(b=>b.result!=='pending')].sort((a,b)=>a.date.localeCompare(b.date)||a.id-b.id);let c=0;drawChart([0,...s.map(b=>{c+=pl(b);return c;})]);});
+
+// ── BOOT ──────────────────────────────────────────────────────────────────
+initSelects();
+render();
+switchTab('prop');
+loadAllTeams();
+startLivePolling();
+</script>
+</body>
+</html>
