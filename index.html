@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Veritas v0.14</title>
+<title>Veritas v0.15</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -65,8 +65,8 @@ select:disabled{opacity:.4;cursor:not-allowed}
 .csel-opt{padding:8px 12px;font-size:13px;cursor:pointer;color:var(--text);transition:background .1s}
 .csel-opt:hover{background:var(--surface3);color:var(--accent)}
 .csel-opt.active{color:var(--accent);background:rgba(62,207,110,.06)}
-.csel-opt.disabled{color:var(--hint);cursor:not-allowed;pointer-events:none}
-.csel-group{padding:8px 12px 4px;font-size:10px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:.06em;cursor:default}
+.csel-opt.disabled{color:var(--red);opacity:.5;cursor:not-allowed;pointer-events:none}
+.csel-group{padding:8px 12px 4px;font-size:10px;font-weight:500;color:var(--red);text-transform:uppercase;letter-spacing:.06em;cursor:default;text-align:center}
 .player-wrap{position:relative}
 .ac-list{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surface3);border:1px solid var(--border2);border-radius:var(--radius);z-index:300;max-height:200px;overflow-y:auto;display:none}
 .ac-list.open{display:block}
@@ -179,7 +179,7 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
       <div class="logo">Veritas</div>
       <span style="font-size:11px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;font-weight:500">Profit Tracker</span>
     </div>
-    <div style="font-size:10px;color:var(--hint)">Built by Tyler — Made with Claude &nbsp;·&nbsp; v0.14</div>
+    <div style="font-size:10px;color:var(--hint)">Built by Tyler — Made with Claude &nbsp;·&nbsp; v0.15</div>
   </div>
   <div class="header-right">
     <div class="roster-status">
