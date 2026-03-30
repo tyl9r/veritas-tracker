@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Veritas v0.13</title>
+<title>Veritas v0.14</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -53,6 +53,20 @@ input:focus,select:focus{border-color:var(--border2)}
 input::placeholder{color:var(--hint)}
 select option{background:#1e1e21}
 select:disabled{opacity:.4;cursor:not-allowed}
+.csel{position:relative;width:100%}
+.csel-display{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;padding:8px 28px 8px 10px;cursor:pointer;transition:border-color .15s;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;user-select:none}
+.csel-display:hover{border-color:var(--border2)}
+.csel-display.open{border-color:var(--border2)}
+.csel-display.disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
+.csel-display::after{content:'▾';position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--muted);pointer-events:none}
+.csel-display.placeholder{color:var(--hint)}
+.csel-drop{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-lg);z-index:300;max-height:240px;overflow-y:auto;display:none;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.csel-drop.open{display:block}
+.csel-opt{padding:8px 12px;font-size:13px;cursor:pointer;color:var(--text);transition:background .1s}
+.csel-opt:hover{background:var(--surface3);color:var(--accent)}
+.csel-opt.active{color:var(--accent);background:rgba(62,207,110,.06)}
+.csel-opt.disabled{color:var(--hint);cursor:not-allowed;pointer-events:none}
+.csel-group{padding:8px 12px 4px;font-size:10px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:.06em;cursor:default}
 .player-wrap{position:relative}
 .ac-list{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surface3);border:1px solid var(--border2);border-radius:var(--radius);z-index:300;max-height:200px;overflow-y:auto;display:none}
 .ac-list.open{display:block}
@@ -76,6 +90,7 @@ select:disabled{opacity:.4;cursor:not-allowed}
 .leg-props{margin:6px 0 0 0;padding:8px;background:var(--surface3);border-radius:var(--radius);border:1px solid var(--border);display:none}
 .leg-props.open{display:block}
 .leg-row input,.leg-row select{background:var(--surface3);font-size:12px;padding:6px 8px}
+.leg-row .csel-display{background:var(--surface3);font-size:12px;padding:6px 24px 6px 8px}
 .leg-row .player-wrap input{background:var(--surface3);font-size:12px;padding:6px 8px}
 .leg-num{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);text-align:center;padding-top:8px}
 .filters{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
@@ -164,7 +179,7 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
       <div class="logo">Veritas</div>
       <span style="font-size:11px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;font-weight:500">Profit Tracker</span>
     </div>
-    <div style="font-size:10px;color:var(--hint)">Built by Tyler — Made with Claude &nbsp;·&nbsp; v0.13</div>
+    <div style="font-size:10px;color:var(--hint)">Built by Tyler — Made with Claude &nbsp;·&nbsp; v0.14</div>
   </div>
   <div class="header-right">
     <div class="roster-status">
@@ -206,10 +221,18 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
       <div id="pane-prop">
         <div class="form-row" style="grid-template-columns:1fr 1fr 1fr 1fr">
           <div class="field"><label>Sport</label>
-            <select id="p-sport" onchange="onSportChange('p-sport','p-team','p-pi')"><option value="">— select sport —</option></select>
+            <div class="csel" id="p-sport-wrap">
+              <div class="csel-display placeholder" onclick="cselToggle('p-sport')">— select sport —</div>
+              <div class="csel-drop" id="p-sport-drop"></div>
+              <input type="hidden" id="p-sport" value=""/>
+            </div>
           </div>
           <div class="field"><label>Team</label>
-            <select id="p-team" disabled onchange="onTeamChange('p-sport','p-team','p-pi','p-ac')"><option value="">— select team —</option></select>
+            <div class="csel" id="p-team-wrap">
+              <div class="csel-display placeholder disabled" onclick="cselToggle('p-team')">— select team —</div>
+              <div class="csel-drop" id="p-team-drop"></div>
+              <input type="hidden" id="p-team" value=""/>
+            </div>
           </div>
           <div class="field"><label>Player</label>
             <div class="player-wrap">
@@ -252,7 +275,11 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
           <div class="field"><label>Stake ($)</label><input type="number" id="p-stake" placeholder="25" min="0.01" step="0.01"/></div>
           <div class="field"><label>Decimal odds</label><input type="number" id="p-odds" placeholder="Auto-filled or enter manually" min="1.01" step="0.01"/></div>
           <div class="field"><label>Result</label>
-            <select id="p-result"><option value="pending">Pending</option><option value="win">Win</option><option value="loss">Loss</option><option value="push">Push</option></select>
+            <div class="csel" id="p-result-wrap">
+              <div class="csel-display" onclick="cselToggle('p-result')">Pending</div>
+              <div class="csel-drop" id="p-result-drop"></div>
+              <input type="hidden" id="p-result" value="pending"/>
+            </div>
           </div>
           <button class="btn primary" onclick="addProp()" style="height:36px;align-self:end">+ Add prop</button>
         </div>
@@ -663,61 +690,161 @@ function selectLegProp(n, type, line, side, americanOdds) {
   document.getElementById('leg-props-'+n).classList.remove('open');
 }
 
-// ── SPORT / TEAM UI ───────────────────────────────────────────────────────
-function rebuildSportSelects() {
-  ['p-sport'].forEach(id => {
-    const el = document.getElementById(id); if (!el) return;
-    const cur = el.value;
-    el.innerHTML = `
-      <option value="">— select sport —</option>
-      <option value="NBA">NBA</option>
-      <optgroup label="─── coming soon ───">
-        <option value="NFL" disabled>NFL</option>
-        <option value="NHL" disabled>NHL</option>
-        <option value="MLB" disabled>MLB</option>
-        <option value="UFC/MMA" disabled>UFC / MMA</option>
-      </optgroup>`;
-    if (cur === 'NBA') el.value = cur;
+// ── CUSTOM SELECT ENGINE ─────────────────────────────────────────────────
+// Data store for custom selects: id -> { options, value, label, dataName, onChange, disabled }
+const cselData = {};
+
+function cselInit(id, options, placeholder, onChange, disabled) {
+  // options: [{ value, label, disabled, group }]
+  cselData[id] = { options, placeholder, onChange, disabled: !!disabled, value: '', dataName: '' };
+  cselRender(id);
+}
+
+function cselRender(id) {
+  const d = cselData[id]; if (!d) return;
+  const wrap = document.getElementById(id + '-wrap'); if (!wrap) return;
+  const display = wrap.querySelector('.csel-display');
+  const drop = document.getElementById(id + '-drop');
+  const hidden = document.getElementById(id);
+
+  // Update display
+  if (d.value) {
+    const opt = d.options.find(o => o.value === d.value);
+    display.textContent = opt ? opt.label : d.value;
+    display.classList.remove('placeholder');
+  } else {
+    display.textContent = d.placeholder;
+    display.classList.add('placeholder');
+  }
+  display.classList.toggle('disabled', d.disabled);
+  hidden.value = d.value;
+
+  // Build dropdown
+  let html = '';
+  let lastGroup = null;
+  d.options.forEach(o => {
+    if (o.group && o.group !== lastGroup) {
+      lastGroup = o.group;
+      html += `<div class="csel-group">${o.group}</div>`;
+    }
+    const cls = [
+      'csel-opt',
+      o.disabled ? 'disabled' : '',
+      o.value === d.value ? 'active' : ''
+    ].filter(Boolean).join(' ');
+    html += `<div class="${cls}" data-v="${o.value}" ${o.dataName ? 'data-name="'+o.dataName+'"' : ''} onmousedown="cselPick('${id}',event)">${o.label}</div>`;
   });
+  drop.innerHTML = html;
+}
+
+function cselToggle(id) {
+  const d = cselData[id]; if (!d || d.disabled) return;
+  const drop = document.getElementById(id + '-drop');
+  const display = document.getElementById(id + '-wrap')?.querySelector('.csel-display');
+  const isOpen = drop.classList.contains('open');
+  // Close all other dropdowns
+  document.querySelectorAll('.csel-drop.open').forEach(el => el.classList.remove('open'));
+  document.querySelectorAll('.csel-display.open').forEach(el => el.classList.remove('open'));
+  if (!isOpen) { drop.classList.add('open'); display?.classList.add('open'); }
+}
+
+function cselPick(id, event) {
+  event.preventDefault();
+  const el = event.currentTarget;
+  if (el.classList.contains('disabled')) return;
+  const d = cselData[id]; if (!d) return;
+  d.value = el.dataset.v;
+  d.dataName = el.dataset.name || '';
+  document.getElementById(id).value = d.value;
+  cselRender(id);
+  document.getElementById(id + '-drop').classList.remove('open');
+  document.getElementById(id + '-wrap')?.querySelector('.csel-display')?.classList.remove('open');
+  if (d.onChange) d.onChange(d.value);
+}
+
+function cselSetValue(id, value) {
+  const d = cselData[id]; if (!d) return;
+  d.value = value;
+  const opt = d.options.find(o => o.value === value);
+  d.dataName = opt?.dataName || '';
+  document.getElementById(id).value = value;
+  cselRender(id);
+}
+
+function cselSetDisabled(id, disabled) {
+  const d = cselData[id]; if (!d) return;
+  d.disabled = disabled;
+  cselRender(id);
+}
+
+function cselSetOptions(id, options, placeholder) {
+  const d = cselData[id]; if (!d) return;
+  d.options = options;
+  if (placeholder) d.placeholder = placeholder;
+  d.value = '';
+  d.dataName = '';
+  cselRender(id);
+}
+
+function cselGetDataName(id) {
+  return cselData[id]?.dataName || '';
+}
+
+// Close dropdowns on outside click
+document.addEventListener('mousedown', e => {
+  document.querySelectorAll('.csel').forEach(wrap => {
+    if (!wrap.contains(e.target)) {
+      wrap.querySelector('.csel-drop')?.classList.remove('open');
+      wrap.querySelector('.csel-display')?.classList.remove('open');
+    }
+  });
+});
+
+// ── SPORT / TEAM UI ───────────────────────────────────────────────────────
+const SPORT_OPTIONS = [
+  { value: 'NBA', label: 'NBA' },
+  { value: 'NFL', label: 'NFL', disabled: true, group: 'Coming soon' },
+  { value: 'NHL', label: 'NHL', disabled: true, group: 'Coming soon' },
+  { value: 'MLB', label: 'MLB', disabled: true, group: 'Coming soon' },
+  { value: 'UFC/MMA', label: 'UFC / MMA', disabled: true, group: 'Coming soon' },
+];
+const RESULT_OPTIONS = [
+  { value: 'pending', label: 'Pending' },
+  { value: 'win', label: 'Win' },
+  { value: 'loss', label: 'Loss' },
+  { value: 'push', label: 'Push' },
+];
+
+function rebuildSportSelects() {
+  const cur = cselData['p-sport']?.value || '';
+  cselSetOptions('p-sport', SPORT_OPTIONS, '— select sport —');
+  if (cur === 'NBA') cselSetValue('p-sport', cur);
 }
 
 function initSelects() {
-  ['p-sport'].forEach(id => {
-    const el = document.getElementById(id); if (!el) return;
-    el.innerHTML = `
-      <option value="">— select sport —</option>
-      <option value="NBA">NBA</option>
-      <optgroup label="─── coming soon ───">
-        <option value="NFL" disabled>NFL</option>
-        <option value="NHL" disabled>NHL</option>
-        <option value="MLB" disabled>MLB</option>
-        <option value="UFC/MMA" disabled>UFC / MMA</option>
-      </optgroup>`;
-  });
+  cselInit('p-sport', SPORT_OPTIONS, '— select sport —', (v) => onSportChange('p-sport','p-team','p-pi'));
+  cselInit('p-team', [], '— select team —', (v) => onTeamChange('p-sport','p-team','p-pi','p-ac'), true);
+  cselInit('p-result', RESULT_OPTIONS, '— result —');
 }
 
 function populateTeamSelect(sport, teamSelId) {
-  const ts = document.getElementById(teamSelId);
-  ts.innerHTML = '<option value="">— select team —</option>';
   if (WIP_SPORTS.includes(sport)) {
-    ts.disabled = true;
+    cselSetOptions(teamSelId, [], '— coming soon —');
+    cselSetDisabled(teamSelId, true);
     return;
   }
   const teams = teamCache[sport] || [];
-  teams.forEach(t => {
-    const o = document.createElement('option'); o.value = t.id; o.dataset.name = t.name;
-    o.textContent = t.name; ts.appendChild(o);
-  });
-  ts.disabled = false;
+  const opts = teams.map(t => ({ value: String(t.id), label: t.name, dataName: t.name }));
+  cselSetOptions(teamSelId, opts, '— select team —');
+  cselSetDisabled(teamSelId, false);
 }
 
 function onSportChange(sid, tid, piid) {
   const sport = document.getElementById(sid).value;
   hideProps();
   if (WIP_SPORTS.includes(sport)) {
-    const ts = document.getElementById(tid);
-    ts.innerHTML = '<option value="">— coming soon —</option>';
-    ts.disabled = true;
+    cselSetOptions(tid, [], '— coming soon —');
+    cselSetDisabled(tid, true);
     if (piid) { document.getElementById(piid).value = ''; }
     return;
   }
@@ -728,16 +855,13 @@ function onSportChange(sid, tid, piid) {
 async function onTeamChange(sid, tid, piid, acid) {
   if (piid) { document.getElementById(piid).value = ''; }
   if (acid) closeAC(acid);
-  // Pre-warm the roster cache on team selection
   const sport = document.getElementById(sid).value;
   const teamId = document.getElementById(tid).value;
   if (sport && teamId) await loadRoster(sport, teamId);
 }
 
 function getTeamName(teamSelId) {
-  const sel = document.getElementById(teamSelId);
-  const opt = sel.options[sel.selectedIndex];
-  return opt ? opt.dataset.name || opt.textContent : '';
+  return cselGetDataName(teamSelId) || '';
 }
 
 // ── AUTOCOMPLETE ──────────────────────────────────────────────────────────
@@ -833,18 +957,18 @@ function switchTab(t){
 function addLeg(){
   legIdCounter++;const n=legIdCounter;
   const d=document.createElement('div');d.className='leg-row';d.id='lr-'+n;
-  const so=`<option value="">— sport —</option>
-    <option value="NBA">NBA</option>
-    <optgroup label="─── coming soon ───">
-      <option value="NFL" disabled>NFL</option>
-      <option value="NHL" disabled>NHL</option>
-      <option value="MLB" disabled>MLB</option>
-      <option value="UFC/MMA" disabled>UFC / MMA</option>
-    </optgroup>`;
   d.innerHTML=`
     <span class="leg-num">${document.getElementById('legs-container').children.length+1}</span>
-    <select id="ls-${n}" onchange="onLegSportChange(${n})">${so}</select>
-    <select id="lt-${n}" disabled onchange="onLegTeamChange(${n})"><option value="">— team —</option></select>
+    <div class="csel" id="ls-${n}-wrap">
+      <div class="csel-display placeholder" onclick="cselToggle('ls-${n}')" style="font-size:12px;padding:6px 8px;background:var(--surface3)">— sport —</div>
+      <div class="csel-drop" id="ls-${n}-drop"></div>
+      <input type="hidden" id="ls-${n}" value=""/>
+    </div>
+    <div class="csel" id="lt-${n}-wrap">
+      <div class="csel-display placeholder disabled" onclick="cselToggle('lt-${n}')" style="font-size:12px;padding:6px 8px;background:var(--surface3)">— team —</div>
+      <div class="csel-drop" id="lt-${n}-drop"></div>
+      <input type="hidden" id="lt-${n}" value=""/>
+    </div>
     <div class="player-wrap">
       <input id="lp-${n}" placeholder="Player…" autocomplete="off"
         oninput="onPI(this,'ls-${n}','lt-${n}','la-${n}')"
@@ -853,7 +977,11 @@ function addLeg(){
       <div class="ac-list" id="la-${n}"></div>
     </div>
     <input id="ll-${n}" placeholder="Stat line…" readonly style="cursor:pointer;background:var(--surface3)" onclick="toggleLegProps(${n})" title="Click to pick a prop"/>
-    <select id="lr2-${n}"><option value="pending">Pending</option><option value="win">Win</option><option value="loss">Loss</option><option value="push">Push</option></select>
+    <div class="csel" id="lr2-${n}-wrap">
+      <div class="csel-display" onclick="cselToggle('lr2-${n}')" style="font-size:12px;padding:6px 8px;background:var(--surface3)">Pending</div>
+      <div class="csel-drop" id="lr2-${n}-drop"></div>
+      <input type="hidden" id="lr2-${n}" value="pending"/>
+    </div>
     <button class="btn danger" onclick="removeLeg(${n})" style="padding:4px 6px;font-size:13px;align-self:start;margin-top:2px">✕</button>
     <div style="grid-column:1/-1">
       <div class="leg-props" id="leg-props-${n}">
@@ -870,15 +998,19 @@ function addLeg(){
         </div>
       </div>
     </div>`;
-  document.getElementById('legs-container').appendChild(d);refreshLegNums();
+  document.getElementById('legs-container').appendChild(d);
+  // Init custom selects for this leg
+  cselInit('ls-'+n, SPORT_OPTIONS, '— sport —', () => onLegSportChange(n));
+  cselInit('lt-'+n, [], '— team —', () => onLegTeamChange(n), true);
+  cselInit('lr2-'+n, RESULT_OPTIONS, '— result —');
+  refreshLegNums();
 }
 
 function onLegSportChange(n){
   const sport=document.getElementById('ls-'+n).value;
-  const ts=document.getElementById('lt-'+n);
   if(WIP_SPORTS.includes(sport)){
-    ts.innerHTML='<option value="">— coming soon —</option>';
-    ts.disabled=true;
+    cselSetOptions('lt-'+n, [], '— coming soon —');
+    cselSetDisabled('lt-'+n, true);
     document.getElementById('lp-'+n).value='';closeAC('la-'+n);
     return;
   }
@@ -909,9 +1041,7 @@ async function onLegTeamChange(n){
 }
 
 function getLegTeamName(n){
-  const sel=document.getElementById('lt-'+n);
-  const opt=sel.options[sel.selectedIndex];
-  return opt?opt.dataset.name||opt.textContent:'';
+  return cselGetDataName('lt-'+n) || '';
 }
 
 function removeLeg(n){document.getElementById('lr-'+n)?.remove();refreshLegNums();}
@@ -952,12 +1082,12 @@ function addProp(){
   bets.unshift({id:Date.now(),kind:'prop',sport,team,player,line,stake,odds,result,date});
   save();render();
   // Reset form
-  document.getElementById('p-sport').value='';
-  document.getElementById('p-team').innerHTML='<option value="">— select team —</option>';
-  document.getElementById('p-team').disabled=true;
+  cselSetValue('p-sport', '');
+  cselSetOptions('p-team', [], '— select team —');
+  cselSetDisabled('p-team', true);
   document.getElementById('p-pi').value='';closeAC('p-ac');
   ['p-stake','p-odds'].forEach(i=>document.getElementById(i).value='');
-  document.getElementById('p-result').value='pending';
+  cselSetValue('p-result', 'pending');
   hideProps();
   selectedPropLine=null;
   document.getElementById('p-line-manual').value='';
