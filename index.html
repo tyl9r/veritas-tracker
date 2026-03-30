@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Veritas v0.39</title>
+<title>Veritas v0.40</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -459,7 +459,7 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
           <span class="settings-item-desc" id="user-email-display"></span>
         </div>
         <div class="settings-item" style="cursor:default;border-top:1px solid var(--border)">
-          <span class="settings-item-desc" style="text-align:center;width:100%;color:var(--muted);font-family:'DM Mono',monospace">v0.39</span>
+          <span class="settings-item-desc" style="text-align:center;width:100%;color:var(--muted);font-family:'DM Mono',monospace">v0.40</span>
         </div>
       </div>
     </div>
@@ -2369,23 +2369,31 @@ async function boot() {
     await loadFromCloud();
   }
 
+  let appBooted = false;
+  async function bootApp(session) {
+    if (appBooted) return;
+    appBooted = true;
+    currentUser = session.user;
+    document.getElementById('auth-page').classList.add('hidden');
+    document.getElementById('app-main').style.display = '';
+    await migrateLocalBets();
+    await loadProfile();
+    await loadFromCloud();
+    initSelects();
+    render();
+    switchTab('prop');
+    loadAllTeams();
+    startLivePolling();
+  }
+
   // Listen for auth changes
   sb.auth.onAuthStateChange(async (event, session) => {
     if (session) {
-      currentUser = session.user;
-      document.getElementById('auth-page').classList.add('hidden');
-      document.getElementById('app-main').style.display = '';
-      await migrateLocalBets();
-      await loadProfile();
-      await loadFromCloud();
-      initSelects();
-      render();
-      switchTab('prop');
-      loadAllTeams();
-      startLivePolling();
+      await bootApp(session);
     } else {
       currentUser = null;
       currentProfile = null;
+      appBooted = false;
       document.getElementById('app-main').style.display = 'none';
       document.getElementById('auth-page').classList.remove('hidden');
     }
@@ -2393,11 +2401,7 @@ async function boot() {
 
   // If already signed in, boot the app
   if (session) {
-    initSelects();
-    render();
-    switchTab('prop');
-    loadAllTeams();
-    startLivePolling();
+    await bootApp(session);
   }
 }
 boot();
