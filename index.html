@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Veritas v0.41</title>
+<title>Veritas v0.42</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -459,7 +459,7 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
           <span class="settings-item-desc" id="user-email-display"></span>
         </div>
         <div class="settings-item" style="cursor:default;border-top:1px solid var(--border)">
-          <span class="settings-item-desc" style="text-align:center;width:100%;color:var(--muted);font-family:'DM Mono',monospace">v0.41</span>
+          <span class="settings-item-desc" style="text-align:center;width:100%;color:var(--muted);font-family:'DM Mono',monospace">v0.42</span>
         </div>
       </div>
     </div>
@@ -726,8 +726,25 @@ function setStatus(state, msg) {
 // no per-team requests so we never hit the 429 rate limit.
 async function loadAllTeams() {
   setStatus('loading', 'Loading NBA rosters…');
+
+  // Try localStorage cache first (valid for 1 hour)
   try {
-    // All-Star tier = 60 req/min, fetch all pages instantly
+    const cached = JSON.parse(localStorage.getItem('veritas_roster_cache') || 'null');
+    if (cached && Date.now() - cached.ts < 3600000) {
+      teamCache['NBA'] = cached.teams;
+      cached.teams.forEach(t => {
+        rosterCache[`NBA_${t.id}`] = cached.rosters[t.id] || [];
+      });
+      Object.assign(playerIdMap, cached.playerIds || {});
+      console.log(`[NBA] loaded from cache: ${cached.teams.length} teams`);
+      setStatus('live', `Live NBA stats via balldontlie`);
+      rebuildSportSelects();
+      WIP_SPORTS.forEach(s => { teamCache[s] = []; });
+      return;
+    }
+  } catch(e) {}
+
+  try {
     let allPlayers = [];
     let cursor = null;
     let page = 0;
@@ -744,13 +761,12 @@ async function loadAllTeams() {
 
     console.log(`[NBA] loaded ${allPlayers.length} players total`);
 
-    // Step 2: build team list and roster cache from player data
-    const teamMap = {}; // id -> {id, name}
-    const rosterMap = {}; // id -> [{name, pos}]
+    const teamMap = {};
+    const rosterMap = {};
 
     allPlayers.forEach(p => {
       const team = p.team;
-      if (!team || !team.id || !team.full_name) return; // skip players with no active team
+      if (!team || !team.id || !team.full_name) return;
       const tid = team.id;
       if (!teamMap[tid]) {
         teamMap[tid] = { id: tid, name: team.full_name };
@@ -758,10 +774,9 @@ async function loadAllTeams() {
       }
       const name = `${p.first_name} ${p.last_name}`;
       rosterMap[tid].push({ name, pos: p.position || '' });
-      playerIdMap[name] = p.id; // store for props lookup
+      playerIdMap[name] = p.id;
     });
 
-    // Only keep real 30 NBA teams (filter out historical/G-League entries)
     const NBA_TEAMS = [
       "Atlanta Hawks","Boston Celtics","Brooklyn Nets","Charlotte Hornets",
       "Chicago Bulls","Cleveland Cavaliers","Dallas Mavericks","Denver Nuggets",
@@ -777,11 +792,16 @@ async function loadAllTeams() {
       .filter(t => NBA_TEAMS.includes(t.name))
       .sort((a,b) => a.name.localeCompare(b.name));
 
-    // Populate rosterCache for each valid team
     teamCache['NBA'].forEach(t => {
       const players = (rosterMap[t.id] || []).sort((a,b) => a.name.localeCompare(b.name));
       rosterCache[`NBA_${t.id}`] = players;
     });
+
+    // Cache to localStorage for 1 hour
+    try {
+      const cacheObj = { ts: Date.now(), teams: teamCache['NBA'], rosters: rosterMap, playerIds: playerIdMap };
+      localStorage.setItem('veritas_roster_cache', JSON.stringify(cacheObj));
+    } catch(e) {}
 
     console.log(`[NBA] ${teamCache['NBA'].length} teams, rosters cached`);
     setStatus('live', `Live NBA stats via balldontlie`);
@@ -2216,7 +2236,7 @@ async function handleAvatarUpload(input) {
 
 function viewOwnProfile() {
   if (currentProfile?.username) {
-    window.open(window.location.pathname + '?u=' + currentProfile.username, '_blank');
+    window.location.href = window.location.pathname + '?u=' + currentProfile.username;
   }
 }
 
@@ -2252,7 +2272,7 @@ async function searchProfiles(query) {
         : `<div class="search-avatar">${(p.display_name || p.username || '?')[0].toUpperCase()}</div>`;
       const isAdmin = p.username === 'tyler' || p.username === 't';
       const badge = (isAdmin ? ' <span style="color:var(--red);font-size:10px">⚡</span>' : '') + (p.member_number <= 50 ? ' <span style="color:#ffd700;font-size:10px">★</span>' : '');
-      return `<div class="search-item" onclick="window.open('${window.location.pathname}?u=${p.username}','_blank')">
+      return `<div class="search-item" onclick="window.location.href='${window.location.pathname}?u=${p.username}'">
         ${avatar}
         <div><div class="search-name">${p.display_name || p.username}${badge}</div><div class="search-user">@${p.username}</div></div>
       </div>`;
