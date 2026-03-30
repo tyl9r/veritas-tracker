@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Veritas v0.29</title>
+<title>Veritas v0.30</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
@@ -219,6 +219,37 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
 .parse-value input{background:var(--surface3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:12px;padding:4px 8px;width:100%;outline:none}
 .parse-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
 @media(max-width:900px){.stats-row{grid-template-columns:repeat(2,1fr)}.main{padding:1rem}}
+@media(max-width:600px){
+  header{padding:0.75rem 1rem;flex-wrap:wrap;gap:8px}
+  .header-right{width:100%;justify-content:space-between}
+  .main{padding:0.75rem}
+  .stats-row{grid-template-columns:1fr 1fr;gap:8px}
+  .stat-card{padding:0.75rem 1rem}
+  .stat-value{font-size:20px}
+  .form-row{grid-template-columns:1fr 1fr !important}
+  .tabs{width:100%}
+  .tab{padding:7px 14px;font-size:12px;flex:1;text-align:center}
+  .leg-row{grid-template-columns:1fr !important;gap:6px}
+  .leg-num{text-align:left;padding-top:0}
+  table{font-size:12px;min-width:520px}
+  td{padding:8px 10px}
+  thead th{padding:8px 10px;font-size:10px}
+  .prop-btn{min-width:68px;padding:5px 8px}
+  .prop-btn .line{font-size:12px}
+  .modal{width:95vw}
+  .settings-menu{min-width:190px}
+  #pl-chart{height:100px}
+  .chart-wrap{padding:1rem}
+  .section-label{font-size:10px}
+  .parse-card-row{flex-wrap:wrap}
+  .filter-chip{font-size:11px;padding:4px 10px}
+}
+@media(max-width:400px){
+  .stats-row{grid-template-columns:1fr}
+  .form-row{grid-template-columns:1fr !important}
+  .logo{font-size:18px}
+  table{min-width:420px}
+}
 </style>
 </head>
 <body>
@@ -248,7 +279,7 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
           <span class="settings-item-desc">Permanently remove all bet history</span>
         </div>
         <div class="settings-item" style="cursor:default;border-top:1px solid var(--border)">
-          <span class="settings-item-desc" style="text-align:center;width:100%;color:var(--muted);font-family:'DM Mono',monospace">v0.29</span>
+          <span class="settings-item-desc" style="text-align:center;width:100%;color:var(--muted);font-family:'DM Mono',monospace">v0.30</span>
         </div>
       </div>
     </div>
