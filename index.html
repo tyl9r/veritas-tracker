@@ -905,6 +905,7 @@ function initSelects() {
   cselInit('p-sport', SPORT_OPTIONS, '— select sport —', (v) => onSportChange('p-sport','p-team','p-pi'));
   cselInit('p-team', [], '— select team —', (v) => onTeamChange('p-sport','p-team','p-pi','p-ac'), true);
   cselInit('p-result', RESULT_OPTIONS, '— result —');
+  cselSetValue('p-result', 'pending');
 }
 
 function populateTeamSelect(sport, teamSelId) {
