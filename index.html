@@ -3,10 +3,11 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Veritas v0.43</title>
+<title>Veritas v0.44</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -223,6 +224,56 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
 .parse-value{color:var(--text);font-weight:500}
 .parse-value input{background:var(--surface3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:12px;padding:4px 8px;width:100%;outline:none}
 .parse-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+/* ── SHARE CARD ───────────────────────────────────────────────────────── */
+.share-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:600;display:none;align-items:center;justify-content:center;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.share-overlay.open{display:flex}
+.share-wrap{display:flex;flex-direction:column;align-items:center;gap:16px}
+.share-card{width:400px;max-width:92vw;background:#0e0e11;border-radius:12px;overflow:hidden;font-family:'DM Sans',sans-serif;border:1px solid rgba(255,255,255,0.08)}
+.share-card .sc-accent{height:3px;background:linear-gradient(90deg,#2fcc6c,#4a9ed8)}
+.share-card .sc-header{display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px 0}
+.share-card .sc-logo{font-family:'DM Mono',monospace;font-size:20px;font-weight:500;color:#2fcc6c;letter-spacing:-0.03em}
+.share-card .sc-logo-sub{font-size:8px;color:#6e6e76;text-transform:uppercase;letter-spacing:0.12em;margin-top:1px}
+.share-card .sc-header-right{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.share-card .sc-date{font-size:11px;color:#6e6e76;font-family:'DM Mono',monospace}
+.share-card .sc-sport-chip{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;background:rgba(47,204,108,0.1);color:#2fcc6c}
+.share-card .sc-divider{height:1px;background:rgba(255,255,255,0.06);margin:14px 20px}
+.share-card .sc-main{padding:0 20px}
+.share-card .sc-straight-header{display:flex;justify-content:space-between;align-items:flex-start}
+.share-card .sc-player{font-size:18px;font-weight:500;color:#eceae2}
+.share-card .sc-team{font-size:12px;color:#6e6e76;margin-top:2px}
+.share-card .sc-line-row{display:flex;align-items:center;gap:8px;margin-top:8px}
+.share-card .sc-side-badge{display:inline-block;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:600;text-transform:uppercase}
+.share-card .sc-side-badge.over{background:rgba(47,204,108,0.12);color:#2fcc6c}
+.share-card .sc-side-badge.under{background:rgba(232,69,69,0.12);color:#e84545}
+.share-card .sc-line-target{font-family:'DM Mono',monospace;font-size:16px;font-weight:500;color:#eceae2}
+.share-card .sc-line-stat{font-size:12px;color:#6e6e76}
+.share-card .sc-result-badge{display:inline-flex;align-items:center;padding:4px 12px;border-radius:99px;font-size:11px;font-weight:600;letter-spacing:0.04em}
+.share-card .sc-result-badge.win{background:rgba(47,204,108,0.15);color:#2fcc6c}
+.share-card .sc-result-badge.loss{background:rgba(232,69,69,0.15);color:#e84545}
+.share-card .sc-result-badge.push{background:rgba(232,152,48,0.15);color:#e89830}
+.share-card .sc-result-badge.pending{background:rgba(255,255,255,0.06);color:#6e6e76}
+.share-card .sc-result-badge.partial{background:rgba(232,152,48,0.15);color:#e89830}
+.share-card .sc-parlay-title{font-size:16px;font-weight:500;color:#eceae2}
+.share-card .sc-parlay-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.share-card .sc-legs{display:flex;flex-direction:column;gap:6px}
+.share-card .sc-leg{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:rgba(255,255,255,0.03);border-radius:6px;border:1px solid rgba(255,255,255,0.04)}
+.share-card .sc-leg-left{display:flex;align-items:center;gap:8px}
+.share-card .sc-leg-num{width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#6e6e76}
+.share-card .sc-leg-player{font-size:12px;font-weight:500;color:#eceae2}
+.share-card .sc-leg-detail{font-size:10px;color:#6e6e76;margin-top:1px}
+.share-card .sc-leg-result{font-size:9px;font-weight:600;padding:2px 8px;border-radius:99px}
+.share-card .sc-fin-row{display:flex;justify-content:space-between;padding:0 20px 14px;gap:4px}
+.share-card .sc-fin-item{text-align:center;flex:1}
+.share-card .sc-fin-label{font-size:9px;color:#6e6e76;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px}
+.share-card .sc-fin-value{font-family:'DM Mono',monospace;font-size:14px;font-weight:500;color:#eceae2}
+.share-card .sc-fin-divider{width:1px;background:rgba(255,255,255,0.06);align-self:stretch}
+.share-card .sc-footer{display:flex;justify-content:space-between;align-items:center;padding:10px 20px;border-top:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02)}
+.share-card .sc-footer-logo{font-family:'DM Mono',monospace;font-size:12px;color:rgba(47,204,108,0.4);letter-spacing:-0.02em}
+.share-card .sc-footer-user{font-size:11px;color:#6e6e76;font-family:'DM Mono',monospace}
+.share-actions{display:flex;gap:10px}
+.share-actions .btn{min-width:100px;text-align:center}
+.btn.share-btn{background:var(--accent);color:#0a0a0c;border-color:var(--accent);font-weight:600}
+.btn.share-btn:hover{opacity:.85}
 @media(max-width:900px){.stats-row{grid-template-columns:repeat(2,1fr)}.main{padding:1rem}}
 @media(max-width:600px){
   .mobile-after-sport{display:none}
@@ -671,6 +722,17 @@ td.mono{font-family:'DM Mono',monospace;font-size:12px}
   </div>
 </div>
 </div><!-- /app-main -->
+
+<!-- Share card overlay -->
+<div class="share-overlay" id="share-overlay" onclick="if(event.target===this)closeShareCard()">
+  <div class="share-wrap">
+    <div class="share-card" id="share-card-capture"></div>
+    <div class="share-actions">
+      <button class="btn share-btn" onclick="downloadShareCard()">Download</button>
+      <button class="btn" onclick="closeShareCard()">Close</button>
+    </div>
+  </div>
+</div>
 
 <script>
 // ── SUPABASE ──────────────────────────────────────────────────────────────
@@ -2033,7 +2095,7 @@ function render(){
       <td style="max-width:340px;overflow:hidden;text-overflow:ellipsis">${desc}${b.kind==='prop'&&b.result==='pending'?buildMeter(b.id,b.player,b.line):''}</td>
       <td>${pill}</td><td class="mono">${fmtP(b.stake)}</td><td class="mono">${b.odds.toFixed(2)}</td>
       <td class="mono" style="color:var(--muted)">${fmtP(tw)}</td><td>${plCell}</td><td>${rb}</td>
-      <td><button class="btn danger" onclick="event.stopPropagation();deleteBet(${b.id})">✕</button></td>
+      <td style="display:flex;gap:4px;align-items:center"><button class="btn ghost" onclick="event.stopPropagation();showShareCard(${b.id})" title="Share">⤴</button><button class="btn danger" onclick="event.stopPropagation();deleteBet(${b.id})">✕</button></td>
     </tr>`;
     if(hasLegs&&isOpen){
       html+=`<tr class="legs-detail"><td colspan="9"><div class="legs-inner">
@@ -2678,6 +2740,152 @@ function confirmImport() {
   gradeFromPostGame();
   resetImportPane();
   switchTab('prop');
+}
+
+// ── SHARE CARD ──────────────────────────────────────────────────────────
+function parseShareLine(line) {
+  if (!line) return { side: null, target: null, stat: line || '' };
+  const m = line.match(/(over|under)\s+([\d.]+)\s+(.+)/i);
+  if (!m) return { side: null, target: null, stat: line };
+  return { side: m[1].toLowerCase(), target: m[2], stat: m[3] };
+}
+
+function resultBadgeHTML(result) {
+  return `<span class="sc-result-badge ${result}">${result.toUpperCase()}</span>`;
+}
+
+function showShareCard(betId) {
+  const bet = bets.find(b => b.id === betId);
+  if (!bet) return;
+
+  const americanOdds = decimalToAmerican(bet.odds);
+  const oddsStr = fmtAmerican(americanOdds);
+  const tw = toWin(bet.stake, bet.odds);
+  const pnl = pl(bet);
+  const isParlay = bet.kind === 'parlay' && bet.legs && bet.legs.length > 0;
+  const username = currentProfile ? currentProfile.username : null;
+
+  let mainHTML = '';
+
+  if (isParlay) {
+    const legsHTML = bet.legs.map((leg, i) => {
+      const { side, target, stat } = parseShareLine(leg.line);
+      const legDetail = side
+        ? `${leg.team || ''} · ${side === 'over' ? 'O' : 'U'} ${target} ${stat}`
+        : `${leg.team || ''} · ${leg.line || ''}`;
+      const rCfg = { win: { bg: 'rgba(47,204,108,0.15)', color: '#2fcc6c' }, loss: { bg: 'rgba(232,69,69,0.15)', color: '#e84545' }, push: { bg: 'rgba(232,152,48,0.15)', color: '#e89830' }, pending: { bg: 'rgba(255,255,255,0.06)', color: '#6e6e76' }, partial: { bg: 'rgba(232,152,48,0.15)', color: '#e89830' } };
+      const lc = rCfg[leg.result] || rCfg.pending;
+      return `<div class="sc-leg">
+        <div class="sc-leg-left">
+          <div class="sc-leg-num">${i + 1}</div>
+          <div><div class="sc-leg-player">${leg.player || '—'}</div><div class="sc-leg-detail">${legDetail}</div></div>
+        </div>
+        <span class="sc-leg-result" style="background:${lc.bg};color:${lc.color}">${leg.result.toUpperCase()}</span>
+      </div>`;
+    }).join('');
+
+    mainHTML = `
+      <div class="sc-main">
+        <div class="sc-parlay-header">
+          <span class="sc-parlay-title">${bet.name || bet.legs.length + '-Leg Parlay'}</span>
+          ${resultBadgeHTML(bet.result)}
+        </div>
+        <div class="sc-legs">${legsHTML}</div>
+      </div>`;
+  } else {
+    const { side, target, stat } = parseShareLine(bet.line);
+    const lineRowHTML = side
+      ? `<div class="sc-line-row">
+           <span class="sc-side-badge ${side}">${side === 'over' ? 'OVER' : 'UNDER'}</span>
+           <span class="sc-line-target">${target}</span>
+           <span class="sc-line-stat">${stat}</span>
+         </div>`
+      : (bet.line ? `<div style="font-size:13px;color:#6e6e76;margin-top:6px">${bet.line}</div>` : '');
+
+    const playerName = bet.player || bet.team || bet.event || '—';
+    const teamName = bet.kind === 'prop' ? (bet.team || '') : (bet.event || '');
+
+    mainHTML = `
+      <div class="sc-main">
+        <div class="sc-straight-header">
+          <div>
+            <div class="sc-player">${playerName}</div>
+            ${teamName ? `<div class="sc-team">${teamName}</div>` : ''}
+            ${lineRowHTML}
+          </div>
+          ${resultBadgeHTML(bet.result)}
+        </div>
+      </div>`;
+  }
+
+  const plHTML = bet.result !== 'pending'
+    ? `<div class="sc-fin-divider"></div>
+       <div class="sc-fin-item">
+         <div class="sc-fin-label">P / L</div>
+         <div class="sc-fin-value" style="color:${pnl >= 0 ? '#2fcc6c' : '#e84545'}">${fmt(pnl)}</div>
+       </div>`
+    : '';
+
+  const card = document.getElementById('share-card-capture');
+  card.innerHTML = `
+    <div class="sc-accent"></div>
+    <div class="sc-header">
+      <div>
+        <div class="sc-logo">Veritas</div>
+        <div class="sc-logo-sub">Profit Tracker</div>
+      </div>
+      <div class="sc-header-right">
+        <span class="sc-date">${bet.date}</span>
+        ${bet.sport ? `<span class="sc-sport-chip">${bet.sport}</span>` : ''}
+      </div>
+    </div>
+    <div class="sc-divider"></div>
+    ${mainHTML}
+    <div class="sc-divider"></div>
+    <div class="sc-fin-row">
+      <div class="sc-fin-item">
+        <div class="sc-fin-label">Stake</div>
+        <div class="sc-fin-value">$${bet.stake.toFixed(2)}</div>
+      </div>
+      <div class="sc-fin-divider"></div>
+      <div class="sc-fin-item">
+        <div class="sc-fin-label">Odds</div>
+        <div class="sc-fin-value">${oddsStr}</div>
+      </div>
+      <div class="sc-fin-divider"></div>
+      <div class="sc-fin-item">
+        <div class="sc-fin-label">To Win</div>
+        <div class="sc-fin-value" style="color:#2fcc6c">$${tw.toFixed(2)}</div>
+      </div>
+      ${plHTML}
+    </div>
+    <div class="sc-footer">
+      <span class="sc-footer-logo">veritas</span>
+      ${username ? `<span class="sc-footer-user">@${username}</span>` : ''}
+    </div>`;
+
+  document.getElementById('share-overlay').classList.add('open');
+}
+
+function closeShareCard() {
+  document.getElementById('share-overlay').classList.remove('open');
+}
+
+function downloadShareCard() {
+  const card = document.getElementById('share-card-capture');
+  html2canvas(card, {
+    backgroundColor: '#0e0e11',
+    scale: 2,
+    useCORS: true,
+  }).then(canvas => {
+    const link = document.createElement('a');
+    link.download = 'veritas-bet-slip.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }).catch(err => {
+    console.error('Share card capture failed:', err);
+    alert('Failed to capture card image.');
+  });
 }
 </script>
 </body>
